@@ -1,0 +1,5 @@
+*.pyc
+*.csv
+*.png
+original_model/
+make_batch_file.py

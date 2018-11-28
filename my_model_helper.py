@@ -34,7 +34,7 @@ def generate_groups():
 # 引数1:    agents np.array dytype=float shape=[グループ数, エージェント数, カラム数]
 # 返り値1:  leaders_number list type=int shape=[グループ数]
 # 返り値2:  np.array(pc_count) np.array type=int shape=[グループ数]
-def get_next_leaders_number(agents):
+def get_next_leaders_number(agents, parameter):
     candidates = np.random.randint(0, NUM_MEMBERS, (NUM_GROUPS, NUM_CANDIDATES))
     expected_value = np.zeros((NUM_GROUPS, NUM_MEMBERS, NUM_CANDIDATES))
     
@@ -47,7 +47,7 @@ def get_next_leaders_number(agents):
 
         for _ in range(MAX_SIMU):
             groups, leaders = do_action(groups, leaders)
-            groups, leaders = calc_gain(groups, leaders)
+            groups, leaders = calc_gain(groups, leaders, parameter)
             pc_counts[:, i] += leaders[:, COL_APC]
         agents[is_leaders] = leaders
         agents[is_groups] = np.reshape(groups, (groups.shape[0]*groups.shape[1], groups.shape[2]))
@@ -151,24 +151,25 @@ def do_action(groups, leaders):
 # # 概要:     各成員と制裁者の行動から成員の利得を算出
 # # 引数1:    groups np.array dytype=float shape=[グループ数, エージェント数, カラム数]
 # # 引数2:    leaders np.array dtype=float shape=[グループ数, カラム数]
+# # 引数3:    parameter dict
 # # 返り値1:  d + cp + sp - pcp - psp dytype=float shape=[グループ数, 成員数, カラム数]
-def get_members_gain(groups, leaders):
+def get_members_gain(groups, leaders, parameter):
     # 論理積用のマスク
     pcp_mask = np.array([[leaders[i, COL_APC]] * groups.shape[1] for i in range(groups.shape[0])])
     psp_mask = np.array([[leaders[i, COL_APS]] * groups.shape[1] for i in range(groups.shape[0])])
 
     # 成員の得点計算
-    d = (COST_COOPERATE * np.sum(groups[:, :, COL_AC], axis=1) * POWER_SOCIAL) / (groups.shape[1])
+    d = (parameter['cost_cooperate'] * np.sum(groups[:, :, COL_AC], axis=1) * parameter['power_social']) / (groups.shape[1])
     d = np.tile(d,(groups.shape[1],1))
     d = d.transpose()
-    # 非協力の場合はCOST_COOPERATEがもらえる
-    cp = (COST_COOPERATE * (np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AC]))
-    # 非支援の場合はCOST_SUPPORTがもらえる
-    sp = (COST_SUPPORT * (np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AS]))
+    # 非協力の場合はparameter['cost_cooperate']がもらえる
+    cp = (parameter['cost_cooperate'] * (np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AC]))
+    # 非支援の場合はparameter['cost_support']がもらえる
+    sp = (parameter['cost_support'] * (np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AS]))
     # 非協力の場合に制裁者が罰を行使してたら罰される
-    pcp = (PUNISH_SIZE * np.logical_and(pcp_mask,  (np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AC])))
+    pcp = (parameter['punish_size'] * np.logical_and(pcp_mask,  (np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AC])))
     # 非支援の場合に制裁者が罰を行使してたら罰される
-    psp = (PUNISH_SIZE * np.logical_and(psp_mask,  (np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AS])))
+    psp = (parameter['punish_size'] * np.logical_and(psp_mask,  (np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AS])))
 
     return d + cp + sp - pcp - psp
 
@@ -176,15 +177,16 @@ def get_members_gain(groups, leaders):
 # 概要:     各成員と制裁者の行動から制裁者の利得を算出
 # 引数1:    groups np.array dytype=float shape=[グループ数, エージェント数, カラム数]
 # 引数2:    leaders np.array dtype=float shape=[グループ数, カラム数]
+# 引数3:    parameter dict
 # 返り値1:  tax - pcc - psc dytype=float shape=[グループ数, カラム数]
-def get_leaders_gain(groups, leaders):
+def get_leaders_gain(groups, leaders, parameter):
     # 制裁者の得点計算
-    tax = np.sum(groups[:, :, COL_AS], axis=1) * COST_SUPPORT
+    tax = np.sum(groups[:, :, COL_AS], axis=1) * parameter['cost_support']
     assert tax.shape == (groups.shape[0],), 'expect: {0} actual: {1}'.format( tax.shape, (groups.shape[0]))
     # 非協力者制裁を行うコストを支払う
-    pcc = COST_PUNISH * leaders[:, COL_APC] * (np.sum(np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AC], axis=1))
+    pcc = parameter['cost_punish'] * leaders[:, COL_APC] * (np.sum(np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AC], axis=1))
     # 非支援者制裁を行うコストを支払う
-    psc = COST_PUNISH * leaders[:, COL_APS] * (np.sum(np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AS], axis=1))
+    psc = parameter['cost_punish'] * leaders[:, COL_APS] * (np.sum(np.ones((groups.shape[0], groups.shape[1])) - groups[:, :, COL_AS], axis=1))
 
     return tax - pcc - psc
 
@@ -192,10 +194,11 @@ def get_leaders_gain(groups, leaders):
 # 概要:     成員と制裁者の利得を算出しCOL_Pに加算して返す
 # 引数1:    groups np.array dytype=float shape=[グループ数, エージェント数, カラム数]
 # 引数2:    leaders np.array dtype=float shape=[グループ数, カラム数]
+# 引数3:    parameter dict
 # 返り値1:  groups np.array dytype=float shape=[グループ数, エージェント数, カラム数]
-def calc_gain(groups, leaders):
-    groups[:, :, COL_P] += get_members_gain(groups, leaders)
-    leaders[:, COL_P] += get_leaders_gain(groups, leaders)
+def calc_gain(groups, leaders, parameter):
+    groups[:, :, COL_P] += get_members_gain(groups, leaders, parameter)
+    leaders[:, COL_P] += get_leaders_gain(groups, leaders, parameter)
 
     return groups, leaders
 
@@ -294,16 +297,3 @@ def evolution_leaders(groups, leaders):
     next_leaders[:, COL_P] = 0
 
     return next_leaders
-
-def save_result(plot_ave_g, plot_ave_l):
-    df_gc = pd.DataFrame(data=plot_ave_g[:, (5000, 10000, 20000, 30000, 40000), 0], columns=['gc5000', 'gc10000', 'gc20000', 'gc30000', 'gc40000'], dtype='float')
-    df_gs = pd.DataFrame(data=plot_ave_g[:, (5000, 10000, 20000, 30000, 40000), 1], columns=['gs5000', 'gs10000', 'gs20000', 'gs30000', 'gs40000'], dtype='float')
-    df_lc = pd.DataFrame(data=plot_ave_l[:, (5000, 10000, 20000, 30000, 40000), 0], columns=['lc5000', 'lc10000', 'lc20000', 'lc30000', 'lc40000'], dtype='float')
-    df_ls = pd.DataFrame(data=plot_ave_l[:, (5000, 10000, 20000, 30000, 40000), 1], columns=['ls5000', 'ls10000', 'ls20000', 'ls30000', 'ls40000'], dtype='float')
-    df_all = pd.concat([df_gc, df_gs, df_lc, df_ls], axis=1)
-    df_all.to_csv('./my_result_gene_scale_for_plot_hist.csv')
-
-    df_gene_average_line_g = pd.DataFrame(data=plot_ave_g.mean(axis=0), columns=['gene_c', 'gene_s'], dtype='float')
-    df_gene_average_line_l = pd.DataFrame(data=plot_ave_l.mean(axis=0), columns=['gene_pc', 'gene_ps'], dtype='float')
-    df_all = pd.concat([df_gene_average_line_g, df_gene_average_line_l], axis=1)
-    df_all.to_csv('./my_result_gene_average_for_plot_line.csv')

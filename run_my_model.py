@@ -44,6 +44,10 @@ def process(seed, parameter, path):
         # プロット用にログ記録
         groups_gene_ave.append([groups[:, :, COL_GC].mean(), groups[:, :, COL_GS].mean()])
         leaders_gene_ave.append([leaders[:, COL_GPC].mean(), leaders[:, COL_GPS].mean()])
+        pd.DataFrame(groups[:, :, COL_GC]).to_csv(path + 'csv/groups_gene_c_g={g}_seed={seed}.csv'.format(g=i, seed=seed))
+        pd.DataFrame(groups[:, :, COL_GS]).to_csv(path + 'csv/groups_gene_s_g={g}_seed={seed}.csv'.format(g=i, seed=seed))
+        pd.DataFrame(leaders[:, COL_GPC]).to_csv(path + 'csv/leaders_gene_pc_g={g}_seed={seed}.csv'.format(g=i, seed=seed))
+        pd.DataFrame(leaders[:, COL_GPS]).to_csv(path + 'csv/leaders_gene_ps_g={g}_seed={seed}.csv'.format(g=i, seed=seed))
 
         # 進化
         groups = evolution_members(groups)

@@ -15,7 +15,7 @@ def paramfilename(parameter):
 set_cost_cooperate = [4]
 set_cost_support = [2]
 set_cost_punish = [2]
-set_power_social = [4, 2]
+set_power_social = [4]
 set_punish_size = [8]
 
 for cost_cooperate in set_cost_cooperate:

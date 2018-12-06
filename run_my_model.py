@@ -3,6 +3,7 @@
 
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 import glob
 import os
 import sys
@@ -23,7 +24,7 @@ def process(seed, parameter, path):
     leaders_number, pc_count = get_next_leaders_number(agents, parameter)
     groups, leaders, is_groups, is_leaders = divided_member_and_leaders_by_leaders_number(agents, leaders_number)
 
-    for i in range(MAX_GENERATION):
+    for i in tqdm(range(MAX_GENERATION)):
         # 制裁者決定
         if i % MAX_TERM_OF_OFFICE == MAX_TERM_OF_OFFICE - 1:
             # 結果をコミット
@@ -80,7 +81,7 @@ def main():
         p = Pool(4)
         path = rootpath + dirname + '/'
         arg = [(i, parameter, path) for i in range(MAX_REP)]
-        p.map(wrapper, arg)
+        p.map_async(wrapper, arg).get(9999999)
         p.close
 
 if __name__== "__main__":

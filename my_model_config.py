@@ -6,7 +6,8 @@ import yaml
 NUM_MEMBERS = 20
 NUM_GROUPS = 20
 NUM_CANDIDATES = 5
-MAX_REP = 100
+MAX_REP = 26
+S = 1
 MAX_GENERATION = 1000000
 MAX_GAME = 10
 MAX_SIMU = 100
@@ -41,6 +42,9 @@ COL_GPS = 9
 
 PROB_EVOL_IN_GROUP = 0.9
 PROB_MUTATION = 0.005
+
+# 設定
+MULTI = 9
 
 def load_parameter(path):
     f = open(path, "r")

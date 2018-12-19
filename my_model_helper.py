@@ -12,22 +12,24 @@ warnings.filterwarnings('error')
 # 関数名:   generate_groups()
 # 概要:     初期化された成員が属しているグループとそれらのグループ毎の制裁者を返す
 # 引数:     --
-# 返り値1:  np.array(agents) np.array dytype=float shape=[NUM_GROUPS, NUM_MEMBERS, カラム数]
+# 返り値1:  np.array(groups) np.array dytype=float shape=[NUM_GROUPS, NUM_MEMBERS, カラム数]
 def generate_groups():
-    agents = pd.DataFrame(columns=[])
-    agents['point'] = [0 for i in range(NUM_MEMBERS)]
-    agents['point_log'] = [0 for i in range(NUM_MEMBERS)]
-    agents['action_c'] = [-1 for i in range(NUM_MEMBERS)]
-    agents['action_s'] = [-1 for i in range(NUM_MEMBERS)]
-    agents['action_pc'] = [-1 for i in range(NUM_MEMBERS)]
-    agents['action_ps'] = [-1 for i in range(NUM_MEMBERS)]
-    agents['gene_c'] = np.random.rand(NUM_MEMBERS)
-    agents['gene_s'] = np.random.rand(NUM_MEMBERS)
-    agents['gene_pc'] = np.random.rand(NUM_MEMBERS)
-    agents['gene_ps'] = np.random.rand(NUM_MEMBERS)
-    agents = [agents.values for i in range(NUM_GROUPS)]
+    groups = []
+    for _ in range(NUM_GROUPS):
+        agents = pd.DataFrame(columns=[])
+        agents['point'] = [0 for i in range(NUM_MEMBERS)]
+        agents['point_log'] = [0 for i in range(NUM_MEMBERS)]
+        agents['action_c'] = [-1 for i in range(NUM_MEMBERS)]
+        agents['action_s'] = [-1 for i in range(NUM_MEMBERS)]
+        agents['action_pc'] = [-1 for i in range(NUM_MEMBERS)]
+        agents['action_ps'] = [-1 for i in range(NUM_MEMBERS)]
+        agents['gene_c'] = np.random.rand(NUM_MEMBERS)
+        agents['gene_s'] = np.random.rand(NUM_MEMBERS)
+        agents['gene_pc'] = np.random.rand(NUM_MEMBERS)
+        agents['gene_ps'] = np.random.rand(NUM_MEMBERS)
+        groups.append(agents.values)
 
-    return np.array(agents)
+    return np.array(groups)
 
 # 関数名:   get_next_leaders
 # 概要:     投票により次の制裁者を決定する

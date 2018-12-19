@@ -7,6 +7,7 @@ from tqdm import tqdm
 import glob
 import os
 import sys
+import copy
 from my_model_helper import generate_groups, get_next_leaders_number, divided_member_and_leaders_by_leaders_number, set_gene_s_by_pc_count, do_action, calc_gain, evolution_members, evolution_leaders
 from my_model_config import *
 from make_batch_file import paramfilename
@@ -19,6 +20,9 @@ def process(seed, parameter, path):
     groups_gene_ave = []
     leaders_gene_ave = []
     step = 0
+
+    dfm = []
+    dfl = []
 
     # 最初の制裁者決定
     leaders_number, pc_count = get_next_leaders_number(agents, parameter)
@@ -45,20 +49,43 @@ def process(seed, parameter, path):
         # プロット用にログ記録
         groups_gene_ave.append([groups[:, :, COL_GC].mean(), groups[:, :, COL_GS].mean()])
         leaders_gene_ave.append([leaders[:, COL_GPC].mean(), leaders[:, COL_GPS].mean()])
-        pd.DataFrame(groups[:, :, COL_GC]).to_csv(path + 'csv/groups_gene_c_g={g}_seed={seed}.csv'.format(g=i, seed=seed))
-        pd.DataFrame(groups[:, :, COL_GS]).to_csv(path + 'csv/groups_gene_s_g={g}_seed={seed}.csv'.format(g=i, seed=seed))
-        pd.DataFrame(leaders[:, COL_GPC]).to_csv(path + 'csv/leaders_gene_pc_g={g}_seed={seed}.csv'.format(g=i, seed=seed))
-        pd.DataFrame(leaders[:, COL_GPS]).to_csv(path + 'csv/leaders_gene_ps_g={g}_seed={seed}.csv'.format(g=i, seed=seed))
+
+        df_c = pd.DataFrame(groups[:, :, COL_GC])
+        df_c['gene_name'] = 'c'
+        df_c['generation'] = i
+        df_c_copy = copy.deepcopy(df_c)
+        df_s = pd.DataFrame(groups[:, :, COL_GS])
+        df_s['gene_name'] = 's'
+        df_s['generation'] = i
+        df_s_copy = copy.deepcopy(df_s)
+        dfm.extend([df_c_copy, df_s_copy])
+
+        df_pc = pd.DataFrame(leaders[:, COL_GPC])
+        df_pc['gene_name'] = 'pc'
+        df_pc['generation'] = i
+        df_pc_copy = copy.deepcopy(df_pc)
+        df_ps = pd.DataFrame(leaders[:, COL_GPS])
+        df_ps['gene_name'] = 'ps'
+        df_ps['generation'] = i
+        df_ps_copy = copy.deepcopy(df_ps)
+        dfl.extend([df_pc_copy, df_ps_copy])
 
         # 進化
         groups = evolution_members(groups)
         if i % FREQ_EVOL_LEADERS == FREQ_EVOL_LEADERS - 1:
             leaders = evolution_leaders(groups, leaders)
+        
+        if i % (MAX_GENERATION / 10) == (MAX_GENERATION / 10) - 1:
+            pd.concat(dfm).to_csv(path + 'csv/member_gene_seed={seed}_generation={i}.csv'.format(seed=seed, i=i))
+            pd.concat(dfl).to_csv(path + 'csv/leader_gene_seed={seed}_generation={i}.csv'.format(seed=seed, i=i))
+            dfm = []
+            dfl = []
     
     # 結果保存
     pd.DataFrame(np.array(groups_gene_ave)).to_csv(path + 'csv/groups_gene_ave_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(np.array(leaders_gene_ave)).to_csv(path + 'csv/leaders_gene_ave_seed={seed}.csv'.format(seed=seed))
-    print('{}/{} -done'.format(seed, MAX_REP))
+    # pd.concat(dfm).to_csv(path + 'csv/member_gene_seed={seed}_generation={i}.csv'.format(seed=seed, i=i))
+    # pd.concat(dfl).to_csv(path + 'csv/leader_gene_seed={seed}_generation={i}.csv'.format(seed=seed, i=i))
 
 # 引数を複数取るために必要
 # https://qiita.com/kojpk/items/2919362de582a7d8de9e
@@ -78,10 +105,10 @@ def main():
         os.mkdir(rootpath + dirname)
         os.mkdir(rootpath + dirname + '/csv')
 
-        p = Pool(4)
+        p = Pool(MULTI)
         path = rootpath + dirname + '/'
-        arg = [(i, parameter, path) for i in range(MAX_REP)]
-        p.map_async(wrapper, arg).get(9999999)
+        arg = [(i, parameter, path) for i in range(S, MAX_REP)]
+        p.map(wrapper, arg)
         p.close
 
 if __name__== "__main__":

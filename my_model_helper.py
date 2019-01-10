@@ -24,6 +24,7 @@ def generate_groups():
         agents['action_pc'] = [-1 for i in range(NUM_MEMBERS)]
         agents['action_ps'] = [-1 for i in range(NUM_MEMBERS)]
         agents['gene_c'] = np.random.rand(NUM_MEMBERS)
+        # agents['gene_c'] = np.full(NUM_MEMBERS, 1.0)
         agents['gene_s'] = np.random.rand(NUM_MEMBERS)
         agents['gene_pc'] = np.random.rand(NUM_MEMBERS)
         agents['gene_ps'] = np.random.rand(NUM_MEMBERS)
@@ -116,7 +117,6 @@ def get_groups_mask(leaders_number):
 # 引数3:    step int
 # 返り値1:  groups np.array dytype=float shape=[グループ数, エージェント数, カラム数]
 def set_gene_s_by_pc_count(groups, pc_count, step):
-    step += MAX_SIMU
     pc_trend = pc_count / step
     pc_trend = np.tile(pc_trend,(groups.shape[1],1))
     pc_trend = pc_trend.transpose()
@@ -148,6 +148,15 @@ def do_action(groups, leaders):
     leaders[:, COL_APS] = np.where(leaders[:, COL_APS] < 1.0, 0.0, 1.0)
 
     return groups, leaders
+
+# 関数名:   update_pc_count
+# 概要:     制裁したかどうかのカウントを更新
+# 引数1:    leaders np.array dtype=float shape=[グループ数, カラム数]
+# 引数2:    pc_count np.array dtype=int shape=[グループ数]
+# 返り値1:  pc_count np.array dtype=int shape=[グループ数]
+def update_pc_count(leaders, pc_count):
+    pc_count = pc_count + leaders[:, COL_APC]
+    return pc_count
 
 # # 関数名:   get_members_gain
 # # 概要:     各成員と制裁者の行動から成員の利得を算出

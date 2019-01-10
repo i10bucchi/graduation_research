@@ -8,7 +8,7 @@ import glob
 import os
 import sys
 import copy
-from my_model_helper import generate_groups, get_next_leaders_number, divided_member_and_leaders_by_leaders_number, set_gene_s_by_pc_count, do_action, calc_gain, evolution_members, evolution_leaders
+from my_model_helper import generate_groups, get_next_leaders_number, divided_member_and_leaders_by_leaders_number, set_gene_s_by_pc_count, do_action, update_pc_count, calc_gain, evolution_members, evolution_leaders
 from my_model_config import *
 from make_batch_file import paramfilename
 from multiprocessing import Pool
@@ -19,12 +19,12 @@ def process(seed, parameter, path):
     agents = generate_groups()
     groups_gene_ave = []
     leaders_gene_ave = []
-    step = 0
 
     dfm = []
     dfl = []
 
     # 最初の制裁者決定
+    step = MAX_SIMU
     leaders_number, pc_count = get_next_leaders_number(agents, parameter)
     groups, leaders, is_groups, is_leaders = divided_member_and_leaders_by_leaders_number(agents, leaders_number)
 
@@ -36,14 +36,16 @@ def process(seed, parameter, path):
             agents[is_groups] =  np.reshape(groups, (groups.shape[0]*groups.shape[1], groups.shape[2]))
 
             # 制裁者決定
+            step = MAX_SIMU
             leaders_number, pc_count = get_next_leaders_number(agents, parameter)
             groups, leaders, is_groups, is_leaders = divided_member_and_leaders_by_leaders_number(agents, leaders_number)
         
         # ゲーム
         for _ in range(MAX_GAME):
-            groups = set_gene_s_by_pc_count(groups, pc_count, step % MAX_TERM_OF_OFFICE)
+            groups = set_gene_s_by_pc_count(groups, pc_count, step)
             groups, leaders = do_action(groups, leaders)
             groups, leaders = calc_gain(groups, leaders, parameter)
+            pc_count = update_pc_count(leaders, pc_count)
             step += 1
         
         # プロット用にログ記録
@@ -108,7 +110,8 @@ def main():
         p = Pool(MULTI)
         path = rootpath + dirname + '/'
         arg = [(i, parameter, path) for i in range(S, MAX_REP)]
-        p.map(wrapper, arg)
+        # p.map(wrapper, arg)
+        p.map_async(wrapper, arg).get(9999999)
         p.close
 
 if __name__== "__main__":

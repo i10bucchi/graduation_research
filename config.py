@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import yaml
 
 # モデル
 NUM_MEMBERS = 20
 NUM_GROUPS = 20
 NUM_CANDIDATES = 5
-MAX_REP = 26
+MAX_REP = 3
 S = 1
-MAX_GENERATION = 1000000
+MAX_GENERATION = 100000
 MAX_GAME = 10
 MAX_SIMU = 100
 MAX_TERM_OF_OFFICE = 10000
@@ -33,18 +34,18 @@ COL_APS = 5
 COL_GPC = 8
 COL_GPS = 9
 
-# # パラメータ
-# COST_COOPERATE = 4
-# COST_SUPPORT = 2
-# COST_PUNISH = 2
-# POWER_SOCIAL = 4
-# PUNISH_SIZE = 8
+# パラメータ
+COST_C_LIST = [4]
+COST_S_LIST = [2]
+COST_P_LIST = [2]
+SP_LIST = [4]
+PUNISH_SIZE_LIST = [8]
 
 PROB_EVOL_IN_GROUP = 0.9
 PROB_MUTATION = 0.005
 
 # 設定
-MULTI = 9
+MULTI = 3
 
 def load_parameter(path):
     f = open(path, "r")

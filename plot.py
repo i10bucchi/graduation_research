@@ -8,7 +8,7 @@ import sys
 import glob
 import matplotlib.pyplot as plt
 from datetime import datetime
-from my_model_config import *
+from config import *
 from make_batch_file import paramfilename
 
 def plot_line(df_for_line, datapath):

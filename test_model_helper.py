@@ -2,13 +2,22 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-import my_model_helper
+import model_helper
 import numpy as np
-from my_model_config import *
+from config import *
 
 class TestModel(unittest.TestCase):
+    def setUp(self):
+        self.parameter = {
+            'cost_cooperate':   4,
+            'cost_support':     2,
+            'cost_punish':      2,
+            'power_social':     4,
+            'punish_size':      8,
+        }
+
     def test_generate_groups(self):
-        return_values1 = my_model_helper.generate_groups()
+        return_values1 = model_helper.generate_groups()
 
         # ポイント初期化確認
         expected = np.zeros((NUM_GROUPS, NUM_MEMBERS))
@@ -94,7 +103,7 @@ class TestModel(unittest.TestCase):
             ]
         )
 
-        actual = my_model_helper.set_gene_s_by_pc_count(p1arg1, p1arg2, p1arg3)
+        actual = model_helper.set_gene_s_by_pc_count(p1arg1, p1arg2, p1arg3)
         self.assertEqual(np.sum(expected == actual), num_groups * num_members * NUM_COLUMN)
 
         p2arg1 = arg1
@@ -121,7 +130,7 @@ class TestModel(unittest.TestCase):
             ]
         )
 
-        actual = my_model_helper.set_gene_s_by_pc_count(p2arg1, p2arg2, p2arg3)
+        actual = model_helper.set_gene_s_by_pc_count(p2arg1, p2arg2, p2arg3)
         self.assertEqual(np.sum(expected == actual), num_groups * num_members * NUM_COLUMN)
 
         p3arg1 = arg1
@@ -148,7 +157,7 @@ class TestModel(unittest.TestCase):
             ]
         )
 
-        actual = my_model_helper.set_gene_s_by_pc_count(p3arg1, p3arg2, p3arg3)
+        actual = model_helper.set_gene_s_by_pc_count(p3arg1, p3arg2, p3arg3)
         self.assertEqual(np.sum(expected == actual), num_groups * num_members * NUM_COLUMN)
     
     def test_do_action(self):
@@ -157,7 +166,7 @@ class TestModel(unittest.TestCase):
         # 0の場合
         arg1 = np.zeros((NUM_GROUPS, NUM_MEMBERS, NUM_COLUMN))
         arg2 = np.zeros((NUM_GROUPS, NUM_COLUMN))
-        return_values1, return_values2 = my_model_helper.do_action(arg1, arg2)
+        return_values1, return_values2 = model_helper.do_action(arg1, arg2)
         
         expected = np.zeros((NUM_GROUPS, NUM_MEMBERS))
         
@@ -178,7 +187,7 @@ class TestModel(unittest.TestCase):
         # 1の場合
         arg1 = np.ones((NUM_GROUPS, NUM_MEMBERS, NUM_COLUMN))
         arg2 = np.ones((NUM_GROUPS, NUM_COLUMN))
-        return_values1, return_values2 = my_model_helper.do_action(arg1, arg2)
+        return_values1, return_values2 = model_helper.do_action(arg1, arg2)
         
         expected = np.ones((NUM_GROUPS, NUM_MEMBERS))
         
@@ -238,7 +247,7 @@ class TestModel(unittest.TestCase):
             ]
         )
         
-        actual = my_model_helper.get_members_gain(p1arg1, p1arg2)
+        actual = model_helper.get_members_gain(p1arg1, p1arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members*num_groups)
 
         p2arg1 = arg1
@@ -269,14 +278,14 @@ class TestModel(unittest.TestCase):
 
         expected = np.array(
             [
-                [4 - PUNISH_SIZE, 6 - PUNISH_SIZE, 6 - PUNISH_SIZE, 6 - PUNISH_SIZE, 6 - PUNISH_SIZE],
-                [3.2, 7.2 - PUNISH_SIZE, 9.2 - PUNISH_SIZE, 9.2 - PUNISH_SIZE, 9.2 - PUNISH_SIZE],
-                [6.4, 6.4, 10.4 - PUNISH_SIZE, 10.4 - PUNISH_SIZE, 10.4 - PUNISH_SIZE],
+                [4 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size']],
+                [3.2, 7.2 - self.parameter['punish_size'], 9.2 - self.parameter['punish_size'], 9.2 - self.parameter['punish_size'], 9.2 - self.parameter['punish_size']],
+                [6.4, 6.4, 10.4 - self.parameter['punish_size'], 10.4 - self.parameter['punish_size'], 10.4 - self.parameter['punish_size']],
                 [18, 18, 18, 18, 18],
             ]
         )
         
-        actual = my_model_helper.get_members_gain(p2arg1, p2arg2)
+        actual = model_helper.get_members_gain(p2arg1, p2arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members*num_groups)
 
         p3arg1 = arg1
@@ -307,14 +316,14 @@ class TestModel(unittest.TestCase):
 
         expected = np.array(
             [
-                [4, 4, 6 - PUNISH_SIZE, 6 - PUNISH_SIZE, 6 - PUNISH_SIZE],
+                [4, 4, 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size']],
                 [3.2, 7.2, 7.2, 7.2, 7.2],
-                [8.4 - PUNISH_SIZE, 8.4 - PUNISH_SIZE, 12.4 - PUNISH_SIZE, 12.4 - PUNISH_SIZE, 12.4 - PUNISH_SIZE],
-                [16, 18 - PUNISH_SIZE, 18 - PUNISH_SIZE, 18 - PUNISH_SIZE, 18 - PUNISH_SIZE],
+                [8.4 - self.parameter['punish_size'], 8.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size']],
+                [16, 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size']],
             ]
         )
         
-        actual = my_model_helper.get_members_gain(p3arg1, p3arg2)
+        actual = model_helper.get_members_gain(p3arg1, p3arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members*num_groups)
 
         p4arg1 = arg1
@@ -345,14 +354,14 @@ class TestModel(unittest.TestCase):
 
         expected = np.array(
             [
-                [4 - PUNISH_SIZE, 4 - PUNISH_SIZE, 4 - PUNISH_SIZE, 4 - PUNISH_SIZE, 4 - PUNISH_SIZE],
-                [5.2 - PUNISH_SIZE, 9.2 - PUNISH_SIZE - PUNISH_SIZE, 9.2 - PUNISH_SIZE - PUNISH_SIZE, 9.2 - PUNISH_SIZE - PUNISH_SIZE, 9.2 - PUNISH_SIZE - PUNISH_SIZE],
-                [6.4, 8.4 - PUNISH_SIZE, 12.4 - PUNISH_SIZE - PUNISH_SIZE, 12.4 - PUNISH_SIZE - PUNISH_SIZE, 12.4 - PUNISH_SIZE - PUNISH_SIZE],
-                [16, 16, 18 - PUNISH_SIZE, 18 - PUNISH_SIZE, 18 - PUNISH_SIZE],
+                [4 - self.parameter['punish_size'], 4 - self.parameter['punish_size'], 4 - self.parameter['punish_size'], 4 - self.parameter['punish_size'], 4 - self.parameter['punish_size']],
+                [5.2 - self.parameter['punish_size'], 9.2 - self.parameter['punish_size'] - self.parameter['punish_size'], 9.2 - self.parameter['punish_size'] - self.parameter['punish_size'], 9.2 - self.parameter['punish_size'] - self.parameter['punish_size'], 9.2 - self.parameter['punish_size'] - self.parameter['punish_size']],
+                [6.4, 8.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'] - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'] - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'] - self.parameter['punish_size']],
+                [16, 16, 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size']],
             ]
         )
         
-        actual = my_model_helper.get_members_gain(p4arg1, p4arg2)
+        actual = model_helper.get_members_gain(p4arg1, p4arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members*num_groups)
 
     def test_get_leaders_gain(self):
@@ -392,7 +401,7 @@ class TestModel(unittest.TestCase):
             [0, 2, 4, 10]
         )
         
-        actual = my_model_helper.get_leaders_gain(p1arg1, p1arg2)
+        actual = model_helper.get_leaders_gain(p1arg1, p1arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_groups)
 
         p2arg1 = arg1
@@ -425,7 +434,7 @@ class TestModel(unittest.TestCase):
             [-10, -6, -2, 10]
         )
         
-        actual = my_model_helper.get_leaders_gain(p2arg1, p2arg2)
+        actual = model_helper.get_leaders_gain(p2arg1, p2arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_groups)
 
         p3arg1 = arg1
@@ -458,7 +467,7 @@ class TestModel(unittest.TestCase):
             [-10, -6, -2, 10]
         )
         
-        actual = my_model_helper.get_leaders_gain(p3arg1, p3arg2)
+        actual = model_helper.get_leaders_gain(p3arg1, p3arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_groups)
 
         p4arg1 = arg1
@@ -491,7 +500,7 @@ class TestModel(unittest.TestCase):
             [-20, -14, -8, 10]
         )
         
-        actual = my_model_helper.get_leaders_gain(p4arg1, p4arg2)
+        actual = model_helper.get_leaders_gain(p4arg1, p4arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_groups)
 
     def test_softmax_2dim(self):
@@ -510,25 +519,7 @@ class TestModel(unittest.TestCase):
 
         # 少数誤差があるためか見かけ上は足して1になるが比較が通らない.そのため範囲でassert
         expected_area = [0.9999, 1.0001]
-        actual = my_model_helper.softmax_2dim(arg)
-
-        self.assertEquals(np.sum(actual > 0), arg.shape[0] * arg.shape[1])
-        self.assertEquals(np.sum(np.sum(actual, axis=1) > expected_area[0]), arg.shape[0])
-        self.assertEquals(np.sum(np.sum(actual, axis=1) < expected_area[1]), arg.shape[0])
-        
-        arg = np.array(
-            [
-                [1.0e+15, 1.5e+15, 2.0e+15, 2.5e+15],
-                [1.0e-15, 1.5e+15, 2.0e-15, 2.5e+15],
-                [-1.5e+15, 2.5e+15, -3.5e+15, 4.5e+15],
-                [-3.0e+1, -3.5e+1, -4.0e+1, -4.5e-15],
-                [-1.0e+5, -2.0+5, -3.0+5, -4.0+5],
-            ]
-        )
-
-        # exp関数のoverflow, underflowチェック
-        expected_area = [0.9999, 1.0001]
-        actual = my_model_helper.softmax_2dim(arg)
+        actual = model_helper.softmax_2dim(arg)
 
         self.assertEquals(np.sum(actual > 0), arg.shape[0] * arg.shape[1])
         self.assertEquals(np.sum(np.sum(actual, axis=1) > expected_area[0]), arg.shape[0])
@@ -546,20 +537,7 @@ class TestModel(unittest.TestCase):
 
         # 少数誤差があるためか見かけ上は足して1になるが比較が通らない.そのため範囲でassert
         expected_area = [0.9999, 1.0001]
-        actual = my_model_helper.softmax_1dim(arg)
-
-        self.assertEquals(np.sum(actual >= 0), arg.shape[0])
-        self.assertTrue(np.sum(actual) > expected_area[0])
-        self.assertTrue(np.sum(actual) < expected_area[1])
-
-        # 大きすぎる値を入れてもオーバーフローしないか
-        arg = np.array(
-            [99999999, 88888888, 99999999, 66666666, 99999999, 44444444]
-        )
-
-        # 少数誤差があるためか見かけ上は足して1になるが比較が通らない.そのため範囲でassert
-        expected_area = [0.9999, 1.0001]
-        actual = my_model_helper.softmax_1dim(arg)
+        actual = model_helper.softmax_1dim(arg)
 
         self.assertEquals(np.sum(actual >= 0), arg.shape[0])
         self.assertTrue(np.sum(actual) > expected_area[0])
@@ -571,7 +549,7 @@ class TestModel(unittest.TestCase):
 
         expected = np.zeros((NUM_GROUPS, NUM_MEMBERS), dtype=bool)
         expected[:, 0] = True
-        actual = my_model_helper.get_leaders_mask(arg1)
+        actual = model_helper.get_leaders_mask(arg1)
         
         self.assertEquals(np.sum(actual == expected), NUM_GROUPS * NUM_MEMBERS)
 
@@ -580,7 +558,7 @@ class TestModel(unittest.TestCase):
 
         expected = np.zeros((NUM_GROUPS, NUM_MEMBERS),dtype=bool)
         expected[:, 0] = True
-        actual = my_model_helper.get_leaders_mask(arg1)
+        actual = model_helper.get_leaders_mask(arg1)
         
         self.assertEquals(np.sum(actual == expected), NUM_GROUPS * NUM_MEMBERS)
 
@@ -592,7 +570,7 @@ class TestModel(unittest.TestCase):
 
         expected = np.ones((NUM_GROUPS, NUM_MEMBERS), dtype=bool)
         expected[:, 0] = False
-        actual = my_model_helper.get_groups_mask(arg1)
+        actual = model_helper.get_groups_mask(arg1)
         
         self.assertEquals(np.sum(actual == expected), NUM_GROUPS * NUM_MEMBERS)
 
@@ -601,6 +579,9 @@ class TestModel(unittest.TestCase):
 
         expected = np.ones((NUM_GROUPS, NUM_MEMBERS), dtype=bool)
         expected[:, 0] = False
-        actual = my_model_helper.get_groups_mask(arg1)
+        actual = model_helper.get_groups_mask(arg1)
         
         self.assertEquals(np.sum(actual == expected), NUM_GROUPS * NUM_MEMBERS)
+    
+if __name__ == "__main__":
+    unittest.main()

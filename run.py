@@ -108,9 +108,9 @@ def main():
         p = Pool(MULTI)
         path = rootpath + dirname + '/'
         arg = [(i, parameter, path) for i in range(S, MAX_REP)]
-        process(1, parameter, path)
+        # process(1, parameter, path)
         # p.map(wrapper, arg)
-        # p.map_async(wrapper, arg).get(9999999)
+        p.map_async(wrapper, arg).get(9999999)
         p.close
 
 if __name__== "__main__":

@@ -392,10 +392,6 @@ def evolution_members(members):
 
     return next_members
 
-# # 関数名:   evolution_leaders
-# # 概要:     制裁者の進化を行い新たな遺伝子へ遺伝子カラムを書き換えて返す
-# # 引数1:    leaders np.array dytype=float shape=[グループ数, カラム数]
-# # 返り値1:  leaders np.array dytype=float shape=[グループ数, カラム数]
 def evolution_leaders(members, leaders):
     '''
     abstract:

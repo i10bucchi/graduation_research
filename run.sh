@@ -34,8 +34,8 @@ echo "cp ./config.py ./${FILENAME}/config.py"
 cp ./config.py ./${FILENAME}/config.py
 echo "cp ./plot.py ./${FILENAME}/plot.py"
 cp ./plot.py ./${FILENAME}/plot.py
-echo "cp ./plot.py ./${FILENAME}/make_batch_file.py"
-cp ./plot.py ./${FILENAME}/make_batch_file.py
+echo "cp ./make_batch_file.py ./${FILENAME}/make_batch_file.py"
+cp ./make_batch_file.py ./${FILENAME}/make_batch_file.py
 
 
 echo "mv ./${FILENAME} ./result/${FILENAME}"

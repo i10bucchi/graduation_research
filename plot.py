@@ -46,7 +46,11 @@ def plot_line_all(members, leaders, datapath):
     width = 3
     height_m = members.shape[0] / width + 1
     height_l = leaders.shape[0] / width + 1
-    fig = plt.figure(figsize=(16,12))
+
+    w_hight = MAX_REP - S * 3 / 5
+    w_width = w_hight * 3 / 4 
+
+    fig = plt.figure(figsize=(w_hight, w_width))
     for i, member in enumerate(members):
         plt.subplot(height_m, width, i+1)
         plt.ylim(0, 1)
@@ -59,7 +63,7 @@ def plot_line_all(members, leaders, datapath):
     plt.savefig(datapath + 'plot_img/c_all.png')
     plt.close()
 
-    fig = plt.figure(figsize=(16,12))
+    fig = plt.figure(figsize=(w_hight, w_width))
     for i, member in enumerate(members):
         plt.subplot(height_m, width, i+1)
         plt.ylim(0, 1)
@@ -72,7 +76,7 @@ def plot_line_all(members, leaders, datapath):
     plt.savefig(datapath + 'plot_img/s_all.png')
     plt.close()
 
-    fig = plt.figure(figsize=(16,12))
+    fig = plt.figure(figsize=(w_hight, w_width))
     for i, leader in enumerate(leaders):
         plt.subplot(height_l, width, i+1)
         plt.ylim(0, 1)
@@ -85,7 +89,7 @@ def plot_line_all(members, leaders, datapath):
     plt.savefig(datapath + 'plot_img/pc_all.png')
     plt.close()
 
-    fig = plt.figure(figsize=(16,12))
+    fig = plt.figure(figsize=(w_hight, w_width))
     for i, leader in enumerate(leaders):
         plt.subplot(height_l, width, i+1)
         plt.ylim(0, 1)
@@ -194,6 +198,8 @@ if __name__== "__main__":
     for p_path in p_path_list:
         parameter = load_parameter(p_path)
         dirname = paramfilename(parameter)
-        os.mkdir(rootpath + dirname + '/plot_img')
+        plot_img_dir = rootpath + dirname + '/plot_img'
+        if not os.path.isdir(plot_img_dir):
+            os.mkdir(plot_img_dir)
         plot(rootpath + dirname + '/')
         # plot_free(rootpath + dirname + '/')

@@ -25,27 +25,28 @@ def process(seed, parameter, path):
 
     # 最初の制裁者決定
     step = MAX_SIMU
-    leaders_number, pc_count = get_next_leaders_number(groups, parameter)
+    # leaders_number, pc_count = get_next_leaders_number(groups, parameter)
+    leaders_number = np.ones(NUM_GROUPS)
     member, leaders, is_groups, is_leaders = divided_member_and_leaders_by_leaders_number(groups, leaders_number)
 
     for i in tqdm(range(MAX_GENERATION)):
-        # 制裁者決定
-        if i % MAX_TERM_OF_OFFICE == MAX_TERM_OF_OFFICE - 1:
-            # 結果をコミット
-            groups[is_leaders] = leaders
-            groups[is_groups] =  np.reshape(member, (member.shape[0]*member.shape[1], member.shape[2]))
+        # # 制裁者決定
+        # if i % MAX_TERM_OF_OFFICE == MAX_TERM_OF_OFFICE - 1:
+        #     # 結果をコミット
+        #     groups[is_leaders] = leaders
+        #     groups[is_groups] =  np.reshape(member, (member.shape[0]*member.shape[1], member.shape[2]))
 
-            # 制裁者決定
-            step = MAX_SIMU
-            leaders_number, pc_count = get_next_leaders_number(groups, parameter)
-            member, leaders, is_groups, is_leaders = divided_member_and_leaders_by_leaders_number(groups, leaders_number)
+        #     # 制裁者決定
+        #     step = MAX_SIMU
+        #     leaders_number, pc_count = get_next_leaders_number(groups, parameter)
+        #     member, leaders, is_groups, is_leaders = divided_member_and_leaders_by_leaders_number(groups, leaders_number)
         
         # ゲーム
         for _ in range(MAX_GAME):
-            member = set_gene_s_by_pc_count(member, pc_count, step)
+            # member = set_gene_s_by_pc_count(member, pc_count, step)
             member, leaders = do_action(member, leaders)
             member, leaders = calc_gain(member, leaders, parameter)
-            pc_count = update_pc_count(leaders, pc_count)
+            # pc_count = update_pc_count(leaders, pc_count)
             step += 1
         
         # プロット用にログ記録

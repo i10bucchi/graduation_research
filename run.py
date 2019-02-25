@@ -26,7 +26,7 @@ def process(seed, parameter, path):
     # 最初の制裁者決定
     step = MAX_SIMU
     # leaders_number, pc_count = get_next_leaders_number(groups, parameter)
-    leaders_number = np.ones(NUM_GROUPS)
+    leaders_number = [0 for _ in range(NUM_GROUPS)]
     member, leaders, is_groups, is_leaders = divided_member_and_leaders_by_leaders_number(groups, leaders_number)
 
     for i in tqdm(range(MAX_GENERATION)):

@@ -10,16 +10,16 @@ echo "mkdir ./${FILENAME}"
 mkdir "./${FILENAME}"
 
 # パラメータ生成
-echo "python make_batch_file.py"
-python make_batch_file.py
+echo "python3 make_batch_file.py"
+python3 make_batch_file.py
 
 # モデル実行
-echo "python run.py"
-python run.py ./${FILENAME}/
+echo "python3 run.py"
+python3 run.py ./${FILENAME}/
 
 # 結果のプロット
-echo "python my_model_plot.py"
-python plot.py ./${FILENAME}/
+echo "python3 my_model_plot.py"
+python3 plot.py ./${FILENAME}/
 
 # 結果の保存
 echo "mv ./parameter ./${FILENAME}/parameter"

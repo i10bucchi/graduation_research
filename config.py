@@ -4,52 +4,50 @@
 import yaml
 
 # モデル
-NUM_MEMBERS = 20
-NUM_GROUPS = 20
-NUM_CANDIDATES = 5
-MAX_REP = 51
+NUM_PLAYERS = 21
+NUM_MEMBERS = NUM_PLAYERS-1
+MAX_REP = 12
 S = 1
-MAX_GENERATION = 500000
-MAX_GAME = 10
-MAX_SIMU = 100
-MAX_TERM_OF_OFFICE = 10000
-FREQ_EVOL_LEADERS = 100
+MAX_STEP = 10000
+LEADER_SAMPLING_TERM = 100
 
 # カラム
-NUM_COLUMN = 10
+NUM_COLUMN = 12
 
 ## 共有
 COL_P = 0
+COL_ANUM = 6
+COL_Qa00 = 7 # 成員ならQ(c, s), 制裁者ならQ(pc, ps)
+COL_Qa01 = 8
+COL_Qa10 = 9
+COL_Qa11 = 10
+COL_ROLE = 11
 
 ## 成員用
 COL_P_LOG = 1
 COL_AC = 2
 COL_AS = 3
-COL_GC = 6
-COL_GS = 7
 
 ## 制裁者用
 COL_APC = 4
 COL_APS = 5
-COL_GPC = 8
-COL_GPS = 9
 
 # パラメータ
-COST_C_LIST = [4]
+COST_C_LIST = [10]
 COST_S_LIST = [2]
 COST_P_LIST = [2]
-SP_LIST = [4]
+SP_LIST = [10]
 PUNISH_SIZE_LIST = [8]
 
-PROB_EVOL_IN_GROUP = 0.9
-PROB_MUTATION = 0.005
+EPSILON = 0.2
+ALPHA = 0.2
 
 # 設定
-MULTI = 10
+MULTI = 4
 
 def load_parameter(path):
     f = open(path, "r")
-    parameter = yaml.load(f)
+    parameter = yaml.full_load(f)
     f.close()
 
     return parameter

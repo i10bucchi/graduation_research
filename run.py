@@ -8,85 +8,54 @@ import glob
 import os
 import sys
 import copy
-from model_helper import generate_groups, get_next_leaders_number, divided_member_and_leaders_by_leaders_number, set_gene_s_by_pc_count, do_action, update_pc_count, calc_gain, evolution_members, evolution_leaders
+from model_helper import generate_players, get_members_action, get_leader_action, calc_gain, learning_members, learning_leader
 from config import *
 from make_batch_file import paramfilename
 from multiprocessing import Pool
+import pandas as pd
 
 def process(seed, parameter, path):
     np.random.seed(seed=seed)
 
-    groups = generate_groups()
-    members_gene_ave = []
-    leaders_gene_ave = []
+    players = generate_players()
+    members = players[players['role'] == 'member'].values
+    leader = players[players['role'] == 'leader'].values[0]
 
     dfm = []
     dfl = []
 
-    # 最初の制裁者決定
-    step = MAX_SIMU
-    # leaders_number, pc_count = get_next_leaders_number(groups, parameter)
-    leaders_number = [0 for _ in range(NUM_GROUPS)]
-    member, leaders, is_groups, is_leaders = divided_member_and_leaders_by_leaders_number(groups, leaders_number)
-
-    for i in tqdm(range(MAX_GENERATION)):
-        # # 制裁者決定
-        # if i % MAX_TERM_OF_OFFICE == MAX_TERM_OF_OFFICE - 1:
-        #     # 結果をコミット
-        #     groups[is_leaders] = leaders
-        #     groups[is_groups] =  np.reshape(member, (member.shape[0]*member.shape[1], member.shape[2]))
-
-        #     # 制裁者決定
-        #     step = MAX_SIMU
-        #     leaders_number, pc_count = get_next_leaders_number(groups, parameter)
-        #     member, leaders, is_groups, is_leaders = divided_member_and_leaders_by_leaders_number(groups, leaders_number)
-        
+    step = 0
+    for i in tqdm(range(MAX_STEP)):
         # ゲーム
-        for _ in range(MAX_GAME):
-            # member = set_gene_s_by_pc_count(member, pc_count, step)
-            member, leaders = do_action(member, leaders)
-            member, leaders = calc_gain(member, leaders, parameter)
-            # pc_count = update_pc_count(leaders, pc_count)
-            step += 1
+        if i % LEADER_SAMPLING_TERM == 0:
+            leader = get_leader_action(leader)
+        members = get_members_action(members)
+        members, leader = calc_gain(members, leader, parameter)
+        step += 1
         
         # プロット用にログ記録
-        members_gene_ave.append([member[:, :, COL_GC].mean(), member[:, :, COL_GS].mean()])
-        leaders_gene_ave.append([leaders[:, COL_GPC].mean(), leaders[:, COL_GPS].mean()])
+        df = pd.DataFrame(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11'])
+        df['step'] = i
+        df['member_id'] = range(NUM_MEMBERS)
+        df_copy = copy.deepcopy(df)
+        dfm.append(df_copy)
 
-        df_c = pd.DataFrame(member[:, :, COL_GC])
-        df_c['gene_name'] = 'c'
-        df_c['generation'] = i
-        df_c_copy = copy.deepcopy(df_c)
-        df_s = pd.DataFrame(member[:, :, COL_GS])
-        df_s['gene_name'] = 's'
-        df_s['generation'] = i
-        df_s_copy = copy.deepcopy(df_s)
-        dfm.extend([df_c_copy, df_s_copy])
+        df = pd.DataFrame(np.array([leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]]]), columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11'])
+        df['step'] = i
+        df_copy = copy.deepcopy(df)
+        dfl.append(df_copy)
 
-        df_pc = pd.DataFrame(leaders[:, COL_GPC])
-        df_pc['gene_name'] = 'pc'
-        df_pc['generation'] = i
-        df_pc_copy = copy.deepcopy(df_pc)
-        df_ps = pd.DataFrame(leaders[:, COL_GPS])
-        df_ps['gene_name'] = 'ps'
-        df_ps['generation'] = i
-        df_ps_copy = copy.deepcopy(df_ps)
-        dfl.extend([df_pc_copy, df_ps_copy])
-
-        # 進化
-        member = evolution_members(member)
-        if i % FREQ_EVOL_LEADERS == FREQ_EVOL_LEADERS - 1:
-            leaders = evolution_leaders(member, leaders)
+        # 学習
+        members = learning_members(members)
+        members[COL_P_LOG] += members[COL_P]
+        members[:, COL_P] = 0
+        if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
+            leader = learning_leader(members, leader, parameter)
+            leader[COL_P] = 0
+            members[:, COL_P_LOG] = 0
         
-        if i % (MAX_GENERATION / 10) == (MAX_GENERATION / 10) - 1:
-            pd.concat(dfm).to_csv(path + 'csv/member_gene_seed={seed}_generation={i}.csv'.format(seed=seed, i=i))
-            pd.concat(dfl).to_csv(path + 'csv/leader_gene_seed={seed}_generation={i}.csv'.format(seed=seed, i=i))
-            dfm = []
-            dfl = []
-    
-    # 結果保存
-    pd.DataFrame(np.array(members_gene_ave)).to_csv(path + 'csv/groups_gene_ave_seed={seed}.csv'.format(seed=seed))
-    pd.DataFrame(np.array(leaders_gene_ave)).to_csv(path + 'csv/leaders_gene_ave_seed={seed}.csv'.format(seed=seed))
+    pd.concat(dfm).to_csv(path + 'csv/members_q_seed={seed}.csv'.format(seed=seed))
+    pd.concat(dfl).to_csv(path + 'csv/leader_q_seed={seed}.csv'.format(seed=seed))
 
 # 引数を複数取るために必要
 # https://qiita.com/kojpk/items/2919362de582a7d8de9e

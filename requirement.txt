@@ -1,0 +1,4 @@
+pandas==0.24.2
+numpy==1.16.4
+tqdm==4.32.2
+PyYAML==5.1.2

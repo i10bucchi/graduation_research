@@ -27,8 +27,8 @@ def process(seed, parameter, path):
     for i in tqdm(range(MAX_STEP)):
         # ゲーム
         if i % LEADER_SAMPLING_TERM == 0:
-            leader = get_leader_action(leader)
-        members = get_members_action(members)
+            leader = get_leader_action(leader, parameter)
+        members = get_members_action(members, parameter)
         members, leader = calc_gain(members, leader, parameter)
         step += 1
         
@@ -45,7 +45,7 @@ def process(seed, parameter, path):
         dfl.append(df_copy)
 
         # 学習
-        members = learning_members(members)
+        members = learning_members(members, parameter)
         members[:, COL_P_LOG] += members[:, COL_P]
         members[:, COL_P] = 0
         if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:

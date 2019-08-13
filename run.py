@@ -12,7 +12,6 @@ from model_helper import generate_players, get_members_action, get_leader_action
 from config import *
 from make_batch_file import paramfilename
 from multiprocessing import Pool
-import pandas as pd
 
 def process(seed, parameter, path):
     np.random.seed(seed=seed)
@@ -47,7 +46,7 @@ def process(seed, parameter, path):
 
         # 学習
         members = learning_members(members)
-        members[COL_P_LOG] += members[COL_P]
+        members[:, COL_P_LOG] += members[:, COL_P]
         members[:, COL_P] = 0
         if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
             leader = learning_leader(members, leader, parameter)

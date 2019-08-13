@@ -123,6 +123,7 @@ class TestModel(unittest.TestCase):
 
         # argmax_a(Q) = [0,0]
         arg = np.zeros(NUM_COLUMN)
+        arg[COL_Qa00] = 1
         return_values = model_helper.get_leader_action(arg, epsilon=0)
 
         expected = 0

@@ -4,11 +4,12 @@ import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 import config 
+import make_batch_file
 
 def plot(datapath):
     # 成員について
     df_l = []
-    for i in range(1, config.MAX_REP+1):
+    for i in range(1, config.MAX_REP):
         df = pd.read_csv('{}csv/members_q_seed={}.csv'.format(datapath, i), index_col='step', header=0).drop('Unnamed: 0', axis=1)
         df_l.append(df)
 
@@ -26,13 +27,13 @@ def plot(datapath):
         plt.plot(df_plot['Qa_10'], label='Qa_10', alpha=0.6)
         plt.plot(df_plot['Qa_11'], label='Qa_11', alpha=0.6)
         plt.title('seed={}'.format(i+1))
-        plt.ylim(0, 40)
+        # plt.ylim(0, 40)
     plt.legend(loc='lower right', bbox_to_anchor=(1.5, 0, 0, 0))
-    plt.savefig(daatpath + 'plot_img/members_dynamics.png')
+    plt.savefig(datapath + 'plot_img/members_dynamics.png')
 
     # 制裁者について
     df_l = []
-    for i in range(1, 20):
+    for i in range(1, config.MAX_REP):
         df = pd.read_csv('{}csv/leader_q_seed={}.csv'.format(datapath, i), index_col='step', header=0).drop('Unnamed: 0', axis=1)
         df_l.append(df)
     
@@ -47,9 +48,9 @@ def plot(datapath):
         plt.plot(df_l[i]['Qa_10'], label='Qa_10')
         plt.plot(df_l[i]['Qa_11'], label='Qa_11')
         plt.title('seed={}'.format(i+1))
-        plt.ylim(0, 3000)
+        # plt.ylim(0, 3000)
     plt.legend(loc='lower right', bbox_to_anchor=(1.5, 0, 0, 0))
-    plt.savefig(daatpath + 'plot_img/leader_dynamics.png')
+    plt.savefig(datapath + 'plot_img/leader_dynamics.png')
 
 if __name__== "__main__":
     args = sys.argv
@@ -57,7 +58,7 @@ if __name__== "__main__":
     p_path_list = sorted(glob.glob('./parameter/*.yml'))
     for p_path in p_path_list:
         parameter = config.load_parameter(p_path)
-        dirname = paramfilename(parameter)
+        dirname = make_batch_file.paramfilename(parameter)
         plot_img_dir = rootpath + dirname + '/plot_img'
         if not os.path.isdir(plot_img_dir):
             os.mkdir(plot_img_dir)

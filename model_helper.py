@@ -62,16 +62,14 @@ def get_members_action(members, epsilon=EPSILON):
         members:    np.array shape=[NUM_MEMBERS, NUM_COLUMN]
             全てのグループの成員固体
     '''
-    epsilon_c = np.random.rand(members.shape[0])
-    epsilon_s = np.random.rand(members.shape[0])
+
     members_action = np.argmax(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], axis=1)
+    rand = np.random.rand(members.shape[0])
+    members_action[rand < epsilon] = np.random.randint(0, 4, members_action[rand < epsilon].shape[0])
 
     members[:, [COL_AC, COL_AS]] = np.tile(a_l, (members_action.shape[0], 1))[members_action]
-    members[:, COL_AC][epsilon_c < epsilon] = ( np.random.rand(members[epsilon_c < epsilon].shape[0]) + 0.5 ).astype(np.int64)
-    members[:, COL_AS][epsilon_s < epsilon] = ( np.random.rand(members[epsilon_s < epsilon].shape[0]) + 0.5 ).astype(np.int64)
-    for i in range(NUM_MEMBERS):
-        members[i, COL_ANUM] = int(np.where(a_l_str == ''.join(members[i, [COL_AC, COL_AS]].astype(np.int64).astype(str).tolist()))[0])
-    
+    members[:, COL_ANUM] = members_action
+        
     return members
 
 def get_leader_action(leader, epsilon=EPSILON):
@@ -85,19 +83,15 @@ def get_leader_action(leader, epsilon=EPSILON):
         leader:    np.array shape=[NUM_COLUMN]
             全てのグループの制裁者固体
     '''
-    epsilon_pa = np.random.rand()
-    epsilon_ps = np.random.rand()
-    leader_action = np.argmax(leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]])
+    rand = np.random.rand()
+    
+    if rand < epsilon:
+        leader_action = np.random.randint(0, 4)
+    else:
+        leader_action = np.argmax(leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]])
+    
     leader[[COL_APC, COL_APS]] = a_l[leader_action]
-    if epsilon_pa < epsilon:
-        leader[COL_APC] = int( np.random.rand() + 0.5 )
-    if epsilon_ps < epsilon:
-        leader[COL_APS] = int( np.random.rand() + 0.5 )
-    leader[COL_ANUM] = int(np.where(a_l_str == ''.join(leader[[COL_APC, COL_APS]].astype(np.int64).astype(str).tolist()))[0])
-
-    # # 挙動テスト用に常に制裁を行うモード
-    leader[[COL_APC, COL_APS]] = 1
-    leader[COL_ANUM] = 3
+    leader[COL_ANUM] = leader_action
 
     return leader
 
@@ -126,8 +120,10 @@ def get_members_gain(members, leader, parameter):
     pcp = (parameter['punish_size'] * leader[COL_APC] * (np.ones(members.shape[0]) - members[:, COL_AC]))
     # 非支援の場合に制裁者が罰を行使してたら罰される
     psp = (parameter['punish_size'] * leader[COL_APS] * (np.ones(members.shape[0]) - members[:, COL_AS]))
+    # 利得がマイナスまたは0にならないように最小利得を決定
+    min_r = parameter['punish_size'] * 2 + 1
     
-    return d + cp + sp - pcp - psp
+    return min_r + d + cp + sp - pcp - psp
 
 def get_leaders_gain(members, leader, parameter):
     '''
@@ -150,8 +146,10 @@ def get_leaders_gain(members, leader, parameter):
     pcc = parameter['cost_punish'] * leader[COL_APC] * (np.sum(np.ones(members.shape[0]) - members[:, COL_AC]))
     # 非支援者制裁を行うコストを支払う
     psc = parameter['cost_punish'] * leader[COL_APS] * (np.sum(np.ones(members.shape[0]) - members[:, COL_AS]))
+    # 利得がマイナスまたは0にならないように最小利得を決定
+    min_r = parameter['cost_punish'] * NUM_MEMBERS * 2 + 1
 
-    return tax - pcc - psc
+    return min_r + tax - pcc - psc
 
 def calc_gain(members, leader, parameter):
     '''
@@ -175,45 +173,6 @@ def calc_gain(members, leader, parameter):
     leader[COL_P] += get_leaders_gain(members, leader, parameter)
 
     return members, leader
-
-def softmax_2dim(X):
-    '''
-    abstract:
-        与えられたarrayに対してsoftmax関数を適用する
-    input:
-        X: np.array
-            softmaxの対象となるベクトル
-    output:
-        expX / sum_expX: np.array
-            softmax適用結果
-    '''
-
-    expX = np.exp(X)
-    sum_expX = np.sum(expX, axis=1)
-    sum_expX = np.tile(sum_expX, (X.shape[1],1))
-    sum_expX = sum_expX.transpose()
-    return expX / sum_expX
-
-def softmax_1dim(X):
-    '''
-    abstract:
-        与えられたarrayに対してsoftmax関数を適用する
-    input:
-        X: np.array
-            softmaxの対象となるベクトル
-    output:
-        expX / sum_expX: np.array
-            softmax適用結果
-    '''
-
-    absmax = np.max(np.absolute(X))
-    try:
-        norm_X = X / absmax
-    except RuntimeWarning as exe:
-        norm_X = X
-    expX = np.exp(norm_X)
-    sum_expX = np.sum(expX)
-    return expX / sum_expX
 
 def learning_members(members, alpha=ALPHA):
     '''
@@ -259,9 +218,7 @@ def learning_leader(members, leader, parameter, alpha=ALPHA):
     mask = np.zeros(4)
     mask[int(leader[COL_ANUM])] = 1
 
-    # マイナスの掛け算にならないような処置
-    # r = ( np.sum(members[:, COL_P_LOG]) + (2*parameter['punish_size']) ) * ( leader[COL_P] + (NUM_MEMBERS*2*parameter['cost_punish']) )
-    r = np.mean(members[:, COL_P_LOG]) + leader[COL_P]
+    r = ( np.mean(members[:, COL_P_LOG]) * leader[COL_P] ) / LEADER_SAMPLING_TERM
     # 更新
     error = mask * (np.tile(r, 4) - leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]])
     leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] + ( alpha * error )

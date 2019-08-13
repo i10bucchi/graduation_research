@@ -74,13 +74,10 @@ def main():
         os.mkdir(rootpath + dirname)
         os.mkdir(rootpath + dirname + '/csv')
 
-        p = Pool(MULTI)
         path = rootpath + dirname + '/'
         arg = [(i, parameter, path) for i in range(S, MAX_REP)]
-        # process(1, parameter, path)
-        # p.map(wrapper, arg)
-        p.map_async(wrapper, arg).get(9999999)
-        p.close
+        with Pool(MULTI) as p:
+            p.map_async(wrapper, arg).get(9999999)
 
 if __name__== "__main__":
     main()

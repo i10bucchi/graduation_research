@@ -51,7 +51,7 @@ def generate_players():
 
     return players
 
-def get_members_action(members, epsilon=EPSILON):
+def get_members_action(members, parameter):
     '''
     abstract:
         epshilon-greedy法により成員の行動を決定する
@@ -65,14 +65,14 @@ def get_members_action(members, epsilon=EPSILON):
 
     members_action = np.argmax(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], axis=1)
     rand = np.random.rand(members.shape[0])
-    members_action[rand < epsilon] = np.random.randint(0, 4, members_action[rand < epsilon].shape[0])
+    members_action[rand < parameter['epsilon']] = np.random.randint(0, 4, members_action[rand < parameter['epsilon']].shape[0])
 
     members[:, [COL_AC, COL_AS]] = np.tile(a_l, (members_action.shape[0], 1))[members_action]
     members[:, COL_ANUM] = members_action
         
     return members
 
-def get_leader_action(leader, epsilon=EPSILON):
+def get_leader_action(leader, parameter):
     '''
     abstract:
         epshilon-greedy法により制裁者の行動を決定する
@@ -85,7 +85,7 @@ def get_leader_action(leader, epsilon=EPSILON):
     '''
     rand = np.random.rand()
     
-    if rand < epsilon:
+    if rand < parameter['epsilon']:
         leader_action = np.random.randint(0, 4)
     else:
         leader_action = np.argmax(leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]])
@@ -121,9 +121,9 @@ def get_members_gain(members, leader, parameter):
     # 非支援の場合に制裁者が罰を行使してたら罰される
     psp = (parameter['punish_size'] * leader[COL_APS] * (np.ones(members.shape[0]) - members[:, COL_AS]))
     # 利得がマイナスまたは0にならないように最小利得を決定
-    min_r = parameter['punish_size'] * 2 + 1
+    # min_r = parameter['punish_size'] * 2 + 1
     
-    return min_r + d + cp + sp - pcp - psp
+    return d + cp + sp - pcp - psp
 
 def get_leaders_gain(members, leader, parameter):
     '''
@@ -147,9 +147,9 @@ def get_leaders_gain(members, leader, parameter):
     # 非支援者制裁を行うコストを支払う
     psc = parameter['cost_punish'] * leader[COL_APS] * (np.sum(np.ones(members.shape[0]) - members[:, COL_AS]))
     # 利得がマイナスまたは0にならないように最小利得を決定
-    min_r = parameter['cost_punish'] * NUM_MEMBERS * 2 + 1
+    # min_r = parameter['cost_punish'] * NUM_MEMBERS * 2 + 1
 
-    return min_r + tax - pcc - psc
+    return tax - pcc - psc
 
 def calc_gain(members, leader, parameter):
     '''
@@ -174,7 +174,7 @@ def calc_gain(members, leader, parameter):
 
     return members, leader
 
-def learning_members(members, alpha=ALPHA):
+def learning_members(members, parameter):
     '''
     abstract:
         成員の学習を行う
@@ -194,11 +194,11 @@ def learning_members(members, alpha=ALPHA):
     # 更新
     r = members[:, COL_P]
     error = mask * (np.tile(r,(4,1)).T - members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]])
-    members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] + ( alpha * error )
+    members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] + ( parameter['alpha'] * error )
 
     return members
 
-def learning_leader(members, leader, parameter, alpha=ALPHA):
+def learning_leader(members, leader, parameter):
     '''
     abstract:
         制裁者の学習を行う
@@ -218,8 +218,8 @@ def learning_leader(members, leader, parameter, alpha=ALPHA):
     mask = np.zeros(4)
     mask[int(leader[COL_ANUM])] = 1
 
-    r = ( np.mean(members[:, COL_P_LOG]) * leader[COL_P] ) / LEADER_SAMPLING_TERM
+    r = ( np.mean(members[:, COL_P_LOG]) + leader[COL_P] ) / LEADER_SAMPLING_TERM
     # 更新
     error = mask * (np.tile(r, 4) - leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]])
-    leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] + ( alpha * error )
+    leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] + ( parameter['alpha'] * error )
     return leader

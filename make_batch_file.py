@@ -16,12 +16,14 @@ def paramfilename(parameter):
         filename str
             ファイル名
     '''
-    filename = "{0}_{1}_{2}_{3}_{4}".format(
+    filename = "{0}_{1}_{2}_{3}_{4}_{5}_{6}".format(
         parameter['cost_cooperate'],     # 0
         parameter['cost_support'],       # 1
         parameter['cost_punish'],        # 2
         parameter['power_social'],       # 3
         parameter['punish_size'],        # 4
+        parameter['alpha'],              # 5
+        parameter['epsilon'],            # 6
     )
 
     return filename
@@ -40,18 +42,22 @@ def make_parameter_file():
             for cost_punish in COST_P_LIST:
                 for power_social in SP_LIST:
                     for punish_size in PUNISH_SIZE_LIST:
-                        parameter = {
-                            'cost_cooperate':   cost_cooperate,
-                            'cost_support':     cost_support,
-                            'cost_punish':      cost_punish,
-                            'power_social':     power_social,
-                            'punish_size':      punish_size,
-                        }
+                        for alpha in ALPHA_LIST:
+                            for epsilon in EPSILON_LIST:
+                                parameter = {
+                                    'cost_cooperate':   cost_cooperate,
+                                    'cost_support':     cost_support,
+                                    'cost_punish':      cost_punish,
+                                    'power_social':     power_social,
+                                    'punish_size':      punish_size,
+                                    'alpha':            alpha,
+                                    'epsilon':          epsilon,
+                                }
 
-                        filename = paramfilename(parameter)
-                        f = open('./parameter/' + filename + '.yml', 'w')
-                        f.write(yaml.dump(parameter, default_flow_style=False))
-                        f.close()
+                                filename = paramfilename(parameter)
+                                f = open('./parameter/' + filename + '.yml', 'w')
+                                f.write(yaml.dump(parameter, default_flow_style=False))
+                                f.close()
 
 if __name__ == "__main__":
     make_parameter_file()

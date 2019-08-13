@@ -14,6 +14,8 @@ class TestModel(unittest.TestCase):
             'cost_punish':      2,
             'power_social':     4,
             'punish_size':      8,
+            'alpha':            0.1,
+            'epsilon':          0,
         }
 
     def test_generate_players(self):
@@ -87,7 +89,7 @@ class TestModel(unittest.TestCase):
         # argmax_a(Q) = [0,0]
         arg = np.zeros((NUM_MEMBERS, NUM_COLUMN))
         arg[:, COL_Qa00] = 1
-        return_values = model_helper.get_members_action(arg, epsilon=0)
+        return_values = model_helper.get_members_action(arg, self.parameter)
         
         expected = np.zeros(NUM_MEMBERS)
         actual = return_values[:, COL_AC]
@@ -104,7 +106,7 @@ class TestModel(unittest.TestCase):
         # argmax_a(Q) = [0,1]
         arg = np.zeros((NUM_MEMBERS, NUM_COLUMN))
         arg[:, COL_Qa01] = 1
-        return_values = model_helper.get_members_action(arg, epsilon=0)
+        return_values = model_helper.get_members_action(arg, self.parameter)
         
         expected = np.zeros(NUM_MEMBERS)
         actual = return_values[:, COL_AC]
@@ -124,7 +126,7 @@ class TestModel(unittest.TestCase):
         # argmax_a(Q) = [0,0]
         arg = np.zeros(NUM_COLUMN)
         arg[COL_Qa00] = 1
-        return_values = model_helper.get_leader_action(arg, epsilon=0)
+        return_values = model_helper.get_leader_action(arg, self.parameter)
 
         expected = 0
         actual = return_values[COL_APC]
@@ -141,7 +143,7 @@ class TestModel(unittest.TestCase):
         # argmax_a(Q) = [0,1]
         arg = np.zeros(NUM_COLUMN)
         arg[COL_Qa01] = 1
-        return_values = model_helper.get_leader_action(arg, epsilon=0)
+        return_values = model_helper.get_leader_action(arg, self.parameter)
 
         expected = 0
         actual = return_values[COL_APC]
@@ -593,53 +595,13 @@ class TestModel(unittest.TestCase):
         
         actual = model_helper.get_leaders_gain(p4arg1, p4arg2, self.parameter)
         self.assertEqual(expected, actual) 
-
-    def test_softmax_2dim(self):
-        # softmaxで算出される値を1つ1つ考えるのはめんどくさいので
-        # - 出力値が足して1
-        # - 出力値は正
-        # のみのテストを行う
-
-        arg = np.array(
-            [
-                [10, 15, 20, 25],
-                [15, 25, 35, 45],
-                [30, 35, 40, 45],
-            ]
-        )
-
-        # 少数誤差があるためか見かけ上は足して1になるが比較が通らない.そのため範囲でassert
-        expected_area = [0.9999, 1.0001]
-        actual = model_helper.softmax_2dim(arg)
-
-        self.assertEquals(np.sum(actual > 0), arg.shape[0] * arg.shape[1])
-        self.assertEquals(np.sum(np.sum(actual, axis=1) > expected_area[0]), arg.shape[0])
-        self.assertEquals(np.sum(np.sum(actual, axis=1) < expected_area[1]), arg.shape[0])
-
-    def test_softmax_1dim(self):
-        # softmaxで算出される値を1つ1つ考えるのはめんどくさいので
-        # - 出力値が足して1
-        # - 出力値は正
-        # のみのテストを行う
-
-        arg = np.array(
-            [10, 15, 20, 25]
-        )
-
-        # 少数誤差があるためか見かけ上は足して1になるが比較が通らない.そのため範囲でassert
-        expected_area = [0.9999, 1.0001]
-        actual = model_helper.softmax_1dim(arg)
-
-        self.assertEquals(np.sum(actual >= 0), arg.shape[0])
-        self.assertTrue(np.sum(actual) > expected_area[0])
-        self.assertTrue(np.sum(actual) < expected_area[1])
     
     def test_learning_members(self):
         arg1 = np.zeros((NUM_MEMBERS, NUM_COLUMN))
         arg1[:, COL_P] = np.array(range(NUM_MEMBERS))
         arg1[:, COL_ANUM] = np.full(NUM_MEMBERS, 1)
 
-        return_value = model_helper.learning_members(arg1, alpha=0.1)
+        return_value = model_helper.learning_members(arg1, self.parameter)
 
         actual = return_value
         expected = arg1
@@ -655,7 +617,7 @@ class TestModel(unittest.TestCase):
         arg2[COL_P] = 10
         arg2[COL_ANUM] = 1 
 
-        return_value = model_helper.learning_leader(arg1, arg2, self.parameter, alpha=0.1)
+        return_value = model_helper.learning_leader(arg1, arg2, self.parameter)
 
         actual = return_value
         expected = arg2

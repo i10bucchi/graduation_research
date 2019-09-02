@@ -3,12 +3,10 @@
 
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
 import glob
 import os
 import sys
-import copy
-from model_helper import generate_players, get_members_action, get_leader_action, calc_gain, learning_members, learning_leader
+from model_helper import generate_players, one_order_game
 from config import *
 from make_batch_file import paramfilename
 from multiprocessing import Pool
@@ -20,39 +18,11 @@ def process(seed, parameter, path):
     members = players[players['role'] == 'member'].values
     leader = players[players['role'] == 'leader'].values[0]
 
-    dfm = []
-    dfl = []
-
-    step = 0
-    for i in tqdm(range(MAX_STEP)):
-        # ゲーム
-        if i % LEADER_SAMPLING_TERM == 0:
-            leader = get_leader_action(leader, parameter)
-        members = get_members_action(members, parameter)
-        members, leader = calc_gain(members, leader, parameter)
-        step += 1
-        
-        # プロット用にログ記録
-        df = pd.DataFrame(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11'])
-        df['step'] = i
-        df['member_id'] = range(NUM_MEMBERS)
-        df_copy = copy.deepcopy(df)
-        dfm.append(df_copy)
-
-        df = pd.DataFrame(np.array([leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]]]), columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11'])
-        df['step'] = i
-        df_copy = copy.deepcopy(df)
-        dfl.append(df_copy)
-
-        # 学習
-        members = learning_members(members, parameter)
-        members[:, COL_P_LOG] += members[:, COL_P]
-        members[:, COL_P] = 0
-        if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
-            leader = learning_leader(members, leader, parameter)
-            leader[COL_P] = 0
-            members[:, COL_P_LOG] = 0
-        
+    # theta[0]: 成員の利益を考慮するか否か
+    # theta[1]: 行動試行期間の差
+    theta = [1, 1]
+    dfm, dfl = one_order_game(members, leader, parameter, theta)
+    
     pd.concat(dfm).to_csv(path + 'csv/members_q_seed={seed}.csv'.format(seed=seed))
     pd.concat(dfl).to_csv(path + 'csv/leader_q_seed={seed}.csv'.format(seed=seed))
 

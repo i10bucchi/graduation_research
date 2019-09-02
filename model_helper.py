@@ -4,6 +4,8 @@
 import pandas as pd
 import numpy as np
 import warnings
+import copy
+from tqdm import tqdm
 from config import *
 
 warnings.filterwarnings('error')
@@ -198,7 +200,7 @@ def learning_members(members, parameter):
 
     return members
 
-def learning_leader(members, leader, parameter):
+def learning_leader(members, leader, parameter, theta):
     '''
     abstract:
         制裁者の学習を行う
@@ -209,6 +211,8 @@ def learning_leader(members, leader, parameter):
             制裁者の役割を持つプレイヤー
         parameter:  dict
             実験パラメータ
+        theta: list len=2
+            1次ゲームのルール [成員の利益を考慮するか否か, 行動試行期間の差]
     output:
         leader: np.array shape=[NUM_GROUPS, NUM_COLUMN]
             制裁者の役割を持つプレイヤー
@@ -218,8 +222,76 @@ def learning_leader(members, leader, parameter):
     mask = np.zeros(4)
     mask[int(leader[COL_ANUM])] = 1
 
-    r = ( np.mean(members[:, COL_P_LOG]) + leader[COL_P] ) / LEADER_SAMPLING_TERM
+    if theta[0] == 0 and theta[1] == 0:
+        r = leader[COL_P]
+    elif theta[0] == 0 and theta[1] == 1:
+        r = leader[COL_P] / LEADER_SAMPLING_TERM
+    elif theta[0] == 1 and theta[1] == 0:
+        r = ( np.mean(members[:, COL_P_LOG]) * leader[COL_P] )
+    else:
+        r = ( np.mean(members[:, COL_P_LOG]) * leader[COL_P] ) / LEADER_SAMPLING_TERM
+
     # 更新
     error = mask * (np.tile(r, 4) - leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]])
     leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] + ( parameter['alpha'] * error )
     return leader
+
+def one_order_game(members, leader, parameter, theta):
+    '''
+    abstract:
+        1次ゲームを決められた回数行う
+    input:
+        members:    np.array shape=[NUM_MEMBERS, NUM_COLUMN]
+            成員の役割を持つプレイヤー
+        leader:    np.array shape=[NUM_COLUMN]
+            制裁者の役割を持つプレイヤー
+        parameter:  dict
+            実験パラメータ
+        theta:  list
+            1次ゲームのルール
+    output:
+        dfm:    list
+            各ステップにおける各成員の状態を保存しているリスト
+        dfl:    list
+            各ステップにおける制裁者の状態を保存しているリスト
+    '''
+
+    dfm = []
+    dfl = []
+
+    step = 0
+    for i in tqdm(range(MAX_STEP)):
+        # ゲーム
+        if i % LEADER_SAMPLING_TERM == 0:
+            leader = get_leader_action(leader, parameter)
+        members = get_members_action(members, parameter)
+        members, leader = calc_gain(members, leader, parameter)
+        step += 1
+        
+        # プロット用にログ記録
+        df = pd.DataFrame(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11'])
+        df['step'] = i
+        df['member_id'] = range(NUM_MEMBERS)
+        df_copy = copy.deepcopy(df)
+        dfm.append(df_copy)
+
+        df = pd.DataFrame(np.array([leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]]]), columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11'])
+        df['step'] = i
+        df_copy = copy.deepcopy(df)
+        dfl.append(df_copy)
+
+        # 学習
+        members = learning_members(members, parameter)
+        members[:, COL_P_LOG] += members[:, COL_P]
+        members[:, COL_P] = 0
+        if theta[1] == 0:
+            leader = learning_leader(members, leader, parameter, theta)
+            leader[COL_P] = 0
+            members[:, COL_P_LOG] = 0
+        else:
+            if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
+                leader = learning_leader(members, leader, parameter, theta)
+                leader[COL_P] = 0
+                members[:, COL_P_LOG] = 0
+    
+    return dfm, dfl

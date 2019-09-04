@@ -123,9 +123,9 @@ def get_members_gain(members, leader, parameter):
     # 非支援の場合に制裁者が罰を行使してたら罰される
     psp = (parameter['punish_size'] * leader[COL_APS] * (np.ones(members.shape[0]) - members[:, COL_AS]))
     # 利得がマイナスまたは0にならないように最小利得を決定
-    # min_r = parameter['punish_size'] * 2 + 1
+    min_r = parameter['punish_size'] * 2 + 1
     
-    return d + cp + sp - pcp - psp
+    return d + cp + sp - pcp - psp + min_r
 
 def get_leaders_gain(members, leader, parameter):
     '''
@@ -149,9 +149,9 @@ def get_leaders_gain(members, leader, parameter):
     # 非支援者制裁を行うコストを支払う
     psc = parameter['cost_punish'] * leader[COL_APS] * (np.sum(np.ones(members.shape[0]) - members[:, COL_AS]))
     # 利得がマイナスまたは0にならないように最小利得を決定
-    # min_r = parameter['cost_punish'] * NUM_MEMBERS * 2 + 1
+    min_r = parameter['cost_punish'] * NUM_MEMBERS * 2 + 1
 
-    return tax - pcc - psc
+    return tax - pcc - psc + min_r
 
 def calc_gain(members, leader, parameter):
     '''
@@ -262,8 +262,11 @@ def one_order_game(members, leader, parameter, theta):
     step = 0
     for i in tqdm(range(MAX_STEP)):
         # ゲーム
-        if i % LEADER_SAMPLING_TERM == 0:
+        if theta[1] == 0:
             leader = get_leader_action(leader, parameter)
+        else:
+            if i % LEADER_SAMPLING_TERM == 0:
+                leader = get_leader_action(leader, parameter)
         members = get_members_action(members, parameter)
         members, leader = calc_gain(members, leader, parameter)
         step += 1

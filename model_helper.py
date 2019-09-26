@@ -171,10 +171,12 @@ def calc_gain(members, leader, parameter):
             制裁者の役割を持つプレイヤー
     '''
 
-    members[:, COL_P] += get_members_gain(members, leader, parameter)
-    leader[COL_P] += get_leaders_gain(members, leader, parameter)
+    mrs = get_members_gain(members, leader, parameter)
+    lr = get_leaders_gain(members, leader, parameter)
+    members[:, COL_P] += mrs
+    leader[COL_P] += lr
 
-    return members, leader
+    return members, leader, np.mean(mrs), lr
 
 def learning_members(members, parameter):
     '''
@@ -258,6 +260,7 @@ def one_order_game(members, leader, parameter, theta):
 
     dfm = []
     dfl = []
+    dftmp = []
 
     step = 0
     for i in tqdm(range(MAX_STEP)):
@@ -268,7 +271,7 @@ def one_order_game(members, leader, parameter, theta):
             if i % LEADER_SAMPLING_TERM == 0:
                 leader = get_leader_action(leader, parameter)
         members = get_members_action(members, parameter)
-        members, leader = calc_gain(members, leader, parameter)
+        members, leader, mr, lr = calc_gain(members, leader, parameter)
         step += 1
         
         # プロット用にログ記録
@@ -282,6 +285,11 @@ def one_order_game(members, leader, parameter, theta):
         df['step'] = i
         df_copy = copy.deepcopy(df)
         dfl.append(df_copy)
+
+        df = pd.DataFrame(np.array([np.array([mr, lr])]), columns=['mr', 'lr'])
+        df['step'] = i
+        df_copy = copy.deepcopy(df)
+        dftmp.append(df_copy)
 
         # 学習
         members = learning_members(members, parameter)
@@ -297,4 +305,4 @@ def one_order_game(members, leader, parameter, theta):
                 leader[COL_P] = 0
                 members[:, COL_P_LOG] = 0
     
-    return dfm, dfl
+    return dfm, dfl, dftmp

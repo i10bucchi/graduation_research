@@ -14,17 +14,24 @@ from multiprocessing import Pool
 def process(seed, parameter, path):
     np.random.seed(seed=seed)
 
-    players = generate_players()
-    members = players[players['role'] == 'member'].values
-    leader = players[players['role'] == 'leader'].values[0]
+    thetas = [
+        [0, 0],
+        [0, 1],
+        [1, 0],
+        [1, 1]
+    ]
+    for theta in thetas:
+        players = generate_players()
+        members = players[players['role'] == 'member'].values
+        leader = players[players['role'] == 'leader'].values[0]
 
-    # theta[0]: 成員の利益を考慮するか否か
-    # theta[1]: 行動試行期間の差
-    theta = [1, 1]
-    dfm, dfl = one_order_game(members, leader, parameter, theta)
-    
-    pd.concat(dfm).to_csv(path + 'csv/members_q_seed={seed}.csv'.format(seed=seed))
-    pd.concat(dfl).to_csv(path + 'csv/leader_q_seed={seed}.csv'.format(seed=seed))
+        # theta[0]: 成員の利益を考慮するか否か
+        # theta[1]: 行動試行期間の差
+        dfm, dfl, dftmp = one_order_game(members, leader, parameter, theta)
+        
+        pd.concat(dfm).to_csv(path + 'csv/{theta}_members_q_seed={seed}.csv'.format(theta=''.join([str(t) for t in theta]), seed=seed))
+        pd.concat(dfl).to_csv(path + 'csv/{theta}_leader_q_seed={seed}.csv'.format(theta=''.join([str(t) for t in theta]), seed=seed))
+        pd.concat(dftmp).to_csv(path + 'csv/{theta}_df_tmp_seed={seed}.csv'.format(theta=''.join([str(t) for t in theta]), seed=seed))
 
 # 引数を複数取るために必要
 # https://qiita.com/kojpk/items/2919362de582a7d8de9e

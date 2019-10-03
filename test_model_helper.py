@@ -675,19 +675,17 @@ class TestModel(unittest.TestCase):
         # argmax_a(Q) = [0,0]
         arg = np.zeros((NUM_PLAYERS, NUM_COLUMN))
         arg[:, COL_Qr00] = 1
-        return_values = model_helper.get_players_rule(arg, epshilon=0)
+        actual = model_helper.get_players_rule(arg, epshilon=0)
 
         expected = np.zeros(NUM_PLAYERS)
-        actual = return_values[:, COL_RNUM]
         self.assertEquals(np.sum(expected == actual), NUM_PLAYERS)
 
         # argmax_a(Q) = [0,1]
         arg = np.zeros((NUM_PLAYERS, NUM_COLUMN))
         arg[:, COL_Qr01] = 1
-        return_values = model_helper.get_players_rule(arg, epshilon=0)
+        actual = model_helper.get_players_rule(arg, epshilon=0)
 
         expected = np.ones(NUM_PLAYERS)
-        actual = return_values[:, COL_RNUM]
         self.assertEquals(np.sum(expected == actual), NUM_PLAYERS)
     
     def test_get_gaming_rule(self):
@@ -718,10 +716,10 @@ class TestModel(unittest.TestCase):
     
     def test_learning_rule(self):
         arg1 = np.zeros((NUM_PLAYERS, NUM_COLUMN))
-        arg2 = 1
-        arg3 = 2
+        arg1[:, COL_RREWARD] = np.ones(NUM_PLAYERS)
+        arg2 = 2
         
-        actual = model_helper.learning_rule(arg1, arg2, arg3, alpha=0.1)
+        actual = model_helper.learning_rule(arg1, arg2, alpha=0.1)
         expected = np.zeros((NUM_PLAYERS, 4))
         expected[:, 2] = 0.1
         self.assertEquals(np.sum(actual == expected), NUM_PLAYERS*4)

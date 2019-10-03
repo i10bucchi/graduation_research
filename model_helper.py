@@ -53,6 +53,7 @@ def generate_players():
     players['Qr_10'] = np.random.rand(NUM_PLAYERS)
     players['Qr_11'] = np.random.rand(NUM_PLAYERS)
     players['role'] = ['undefined' for i in range(NUM_PLAYERS)]
+    players['rule_reward'] = np.zeros(NUM_PLAYERS)
 
     return players
 
@@ -179,7 +180,7 @@ def calc_gain(members, leader, parameter):
     members[:, COL_P] += mrs
     leader[COL_P] += lr
 
-    return members, leader, np.mean(mrs), lr
+    return members, leader, mrs, lr
 
 def learning_members(members, parameter):
     '''
@@ -244,7 +245,7 @@ def learning_leader(members, leader, parameter, theta):
 def one_order_game(players, parameter, theta):
     '''
     abstract:
-        1次ゲームを決められた回数行う
+        1次ゲームを決められた回数行いゲーム利得を算出する
     input:
         players:    pd.DataFrame [NUM_PLAYERS, NUM_COLUMN]
             成員の役割を持つプレイヤー
@@ -253,10 +254,6 @@ def one_order_game(players, parameter, theta):
         theta:  list
             1次ゲームのルール
     output:
-        mr_l:    float
-            成員のゲーム平均利得
-        lr_l:    float
-            制裁者のゲーム平均利得
     '''
 
     players['role'] = 'member'
@@ -276,10 +273,10 @@ def one_order_game(players, parameter, theta):
             if i % LEADER_SAMPLING_TERM == 0:
                 leader = get_leader_action(leader, parameter)
         members = get_members_action(members, parameter)
-        members, leader, mr, lr = calc_gain(members, leader, parameter)
+        members, leader, mrs, lr = calc_gain(members, leader, parameter)
         step += 1
 
-        mr_l.append(np.mean(mr))
+        mr_l.append(mrs)
         lr_l.append(lr)
 
         # 学習
@@ -296,10 +293,14 @@ def one_order_game(players, parameter, theta):
                 leader[COL_P] = 0
                 members[:, COL_P_LOG] = 0
     
+    # ゲームの利得を算出
+    members[:, COL_RREWARD] = np.mean(mr_l, axis=0)
+    leader[COL_RREWARD] = np.mean(lr_l)
+
     players[players['role'] == 'member'] = members
     players[players['role'] == 'leader'] = leader
 
-    return players, np.mean(mr_l), np.mean(lr_l)
+    return players
 
 def get_players_rule(players, epshilon=0.5):
     '''
@@ -352,15 +353,13 @@ def get_rule_gain(players):
     '''
     return np.max(players[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], axis=1)
 
-def learning_rule(players, r, rule_number, alpha=0.8):
+def learning_rule(players, rule_number, alpha=0.8):
     '''
     abstract:
         ゲームルールの学習を行う
     input:
         players:    np.array shape=[NUM_PLAYERS, NUM_COLUMN]
             成員の役割を持つプレイヤー
-        r:          np.array shape=[NUM_PLAYERS]
-            ルールの価値(利得)
         rule_number:    int
             採用したルール番号
         alpha:          float
@@ -369,6 +368,9 @@ def learning_rule(players, r, rule_number, alpha=0.8):
         :    np.array shape=[NUM_PLAYERS, 4]
             更新したQ値
     '''
+
+    # 各プレイヤーにとってのルールの評価値
+    r = players[:, COL_RREWARD]
 
     # 今回更新するQ値以外のerrorを0にするためのマスク
     mask = np.zeros((players.shape[0], 4))

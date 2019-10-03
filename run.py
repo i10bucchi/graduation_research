@@ -35,15 +35,18 @@ def process(seed, parameter, path):
             agreed_rule_number = get_gaming_rule(players.values)
         theta = rule_dict[agreed_rule_number]
 
-        players, mr, lr = one_order_game(players, parameter, theta)
+        players = one_order_game(players, parameter, theta)
 
-        rule_reward = get_rule_gain(players.values)
-
-        players.loc[:, ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']] = learning_rule(players.values, rule_reward, agreed_rule_number)
+        players.loc[:, ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']] = learning_rule(players.values, agreed_rule_number)
         
         # プロット用にログ記録
         qr_l.append(players.loc[:, ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].mean().values)
-        r_l.append([mr, lr])
+        r_l.append(
+            [
+                np.mean(players.loc[players['role'] == 'member', 'rule_reward'].values),
+                np.mean(players.loc[players['role'] == 'leader', 'rule_reward'].values)
+            ]
+        )
     
     pd.DataFrame(qr_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qr_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(r_l, columns=['member', 'leader']).to_csv(path + 'csv/players_reward_seed={seed}.csv'.format(seed=seed))

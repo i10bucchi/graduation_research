@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import warnings
 import copy
-from tqdm import tqdm
 from config import *
 
 warnings.filterwarnings('error')
@@ -48,8 +47,12 @@ def generate_players():
     players['Qa_01'] = np.random.rand(NUM_PLAYERS)
     players['Qa_10'] = np.random.rand(NUM_PLAYERS)
     players['Qa_11'] = np.random.rand(NUM_PLAYERS)
-    players['role'] = ['member' for i in range(NUM_PLAYERS)]
-    players.loc[np.random.randint(NUM_PLAYERS), 'role'] = 'leader'
+    players['rule_number'] = np.full(NUM_PLAYERS, -1)
+    players['Qr_00'] = np.random.rand(NUM_PLAYERS)
+    players['Qr_01'] = np.random.rand(NUM_PLAYERS)
+    players['Qr_10'] = np.random.rand(NUM_PLAYERS)
+    players['Qr_11'] = np.random.rand(NUM_PLAYERS)
+    players['role'] = ['undefined' for i in range(NUM_PLAYERS)]
 
     return players
 
@@ -149,7 +152,7 @@ def get_leaders_gain(members, leader, parameter):
     # 非支援者制裁を行うコストを支払う
     psc = parameter['cost_punish'] * leader[COL_APS] * (np.sum(np.ones(members.shape[0]) - members[:, COL_AS]))
     # 利得がマイナスまたは0にならないように最小利得を決定
-    min_r = parameter['cost_punish'] * NUM_MEMBERS * 2 + 1
+    min_r = parameter['cost_punish'] * members.shape[0] * 2 + 1
 
     return tax - pcc - psc + min_r
 
@@ -238,32 +241,34 @@ def learning_leader(members, leader, parameter, theta):
     leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] + ( parameter['alpha'] * error )
     return leader
 
-def one_order_game(members, leader, parameter, theta):
+def one_order_game(players, parameter, theta):
     '''
     abstract:
         1次ゲームを決められた回数行う
     input:
-        members:    np.array shape=[NUM_MEMBERS, NUM_COLUMN]
+        players:    pd.DataFrame [NUM_PLAYERS, NUM_COLUMN]
             成員の役割を持つプレイヤー
-        leader:    np.array shape=[NUM_COLUMN]
-            制裁者の役割を持つプレイヤー
         parameter:  dict
             実験パラメータ
         theta:  list
             1次ゲームのルール
     output:
-        dfm:    list
-            各ステップにおける各成員の状態を保存しているリスト
-        dfl:    list
-            各ステップにおける制裁者の状態を保存しているリスト
+        mr_l:    float
+            成員のゲーム平均利得
+        lr_l:    float
+            制裁者のゲーム平均利得
     '''
 
-    dfm = []
-    dfl = []
-    dftmp = []
+    players['role'] = 'member'
+    players.loc[np.random.randint(0, NUM_PLAYERS), 'role'] = 'leader'
+    members = players[players['role'] == 'member'].values
+    leader = players[players['role'] == 'leader'].values[0]
+
+    mr_l = []
+    lr_l = []
 
     step = 0
-    for i in tqdm(range(MAX_STEP)):
+    for i in range(MAX_STEP):
         # ゲーム
         if theta[1] == 0:
             leader = get_leader_action(leader, parameter)
@@ -273,23 +278,9 @@ def one_order_game(members, leader, parameter, theta):
         members = get_members_action(members, parameter)
         members, leader, mr, lr = calc_gain(members, leader, parameter)
         step += 1
-        
-        # プロット用にログ記録
-        df = pd.DataFrame(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11'])
-        df['step'] = i
-        df['member_id'] = range(NUM_MEMBERS)
-        df_copy = copy.deepcopy(df)
-        dfm.append(df_copy)
 
-        df = pd.DataFrame(np.array([leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]]]), columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11'])
-        df['step'] = i
-        df_copy = copy.deepcopy(df)
-        dfl.append(df_copy)
-
-        df = pd.DataFrame(np.array([np.array([mr, lr])]), columns=['mr', 'lr'])
-        df['step'] = i
-        df_copy = copy.deepcopy(df)
-        dftmp.append(df_copy)
+        mr_l.append(np.mean(mr))
+        lr_l.append(lr)
 
         # 学習
         members = learning_members(members, parameter)
@@ -305,4 +296,84 @@ def one_order_game(members, leader, parameter, theta):
                 leader[COL_P] = 0
                 members[:, COL_P_LOG] = 0
     
-    return dfm, dfl, dftmp
+    players[players['role'] == 'member'] = members
+    players[players['role'] == 'leader'] = leader
+
+    return players, np.mean(mr_l), np.mean(lr_l)
+
+def get_players_rule(players, epshilon=0.5):
+    '''
+    abstract:
+        epshilon-greedy法によりプレイヤーの支持するゲームルールを決定する
+    input:
+        players:    np.array shape=[NUM_PLAYERS, NUM_COLUMN]
+            全てのグループの成員固体
+    output:
+        players_rule:   np.array shape=[NUM_PLAYERS]
+            各プレイヤーが選択したゲームルール配列
+    '''
+
+    players_rule = np.argmax(players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]], axis=1)
+    rand = np.random.rand(players.shape[0])
+    players_rule[rand < epshilon] = np.random.randint(0, 4, players_rule[rand < epshilon].shape[0])
+
+    return players_rule
+
+def get_gaming_rule(players):
+    '''
+    abstract:
+        各プレイヤーが支持するルールで多数決を行う
+    input:
+        players:    np.array shape=[NUM_PLAYERS, NUM_COLUMN]
+            全てのグループの成員固体
+    output:
+        :    int
+            多数決で決まったルールの番号(最大表が2つ以上あった場合は-1を返す)
+    '''
+
+    rule_hyonum = np.bincount(players[:, COL_RNUM].astype(np.int64))
+    max_rule = np.argmax(rule_hyonum)
+
+    if np.sum(max_rule == rule_hyonum) == 1:
+        return max_rule
+    else:
+        return -1
+
+def get_rule_gain(players):
+    '''
+    abstract:
+        Qaの最大値を評価とする
+    input:
+        players:    np.array shape=[NUM_PLAYERS, NUM_COLUMN]
+            全てのグループの成員固体
+    output:
+        :    np.array shape=[NUM_PLAYERS]
+            多数決で決まったルールの番号(最大表が2つ以上あった場合は-1を返す)
+    '''
+    return np.max(players[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], axis=1)
+
+def learning_rule(players, r, rule_number, alpha=0.8):
+    '''
+    abstract:
+        ゲームルールの学習を行う
+    input:
+        players:    np.array shape=[NUM_PLAYERS, NUM_COLUMN]
+            成員の役割を持つプレイヤー
+        r:          np.array shape=[NUM_PLAYERS]
+            ルールの価値(利得)
+        rule_number:    int
+            採用したルール番号
+        alpha:          float
+            学習率
+    output:
+        :    np.array shape=[NUM_PLAYERS, 4]
+            更新したQ値
+    '''
+
+    # 今回更新するQ値以外のerrorを0にするためのマスク
+    mask = np.zeros((players.shape[0], 4))
+    mask[:, rule_number] = 1
+
+    # 更新
+    error = mask * (np.tile(r,(4,1)).T - players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]])
+    return players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]] + ( alpha * error )

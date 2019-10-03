@@ -74,15 +74,6 @@ class TestModel(unittest.TestCase):
         self.assertEquals(np.sum(expected_area[0] <= actual), NUM_PLAYERS)
         self.assertEquals(np.sum(expected_area[1] >= actual), NUM_PLAYERS)
 
-        # 制裁者と成員の振り分け確認
-        expected = NUM_MEMBERS
-        actual = np.sum(return_values1[:, COL_ROLE] == 'member')
-        self.assertEqual(expected, actual)
-
-        expected = 1
-        actual = np.sum(return_values1[:, COL_ROLE] == 'leader')
-        self.assertEqual(expected, actual)
-    
     def test_get_members_action(self):
         # 乱数による決定が入るためepsilon=0の場合のテストを行う
 
@@ -158,6 +149,8 @@ class TestModel(unittest.TestCase):
         self.assertEqual(expected, actual)
 
     def test_get_members_gain(self):
+        # 利得最小値を1にするための切片値
+        min_r = self.parameter['punish_size'] * 2 + 1
         # パターンを描くのが辛いためグループ数と成員数は縮小版でテスト
         num_members = 5
         arg1 = np.zeros((num_members, NUM_COLUMN))
@@ -171,7 +164,7 @@ class TestModel(unittest.TestCase):
         p1arg2[COL_APC] = 0
         p1arg2[COL_APS] = 0
 
-        expected = np.array([6, 6, 6, 6, 6])
+        expected = np.array([6, 6, 6, 6, 6]) + min_r
         actual = model_helper.get_members_gain(p1arg1, p1arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -188,7 +181,7 @@ class TestModel(unittest.TestCase):
         p2arg2[COL_APC] = 0
         p2arg2[COL_APS] = 0
 
-        expected = np.array([6.4, 6.4, 12.4, 12.4, 12.4])
+        expected = np.array([6.4, 6.4, 12.4, 12.4, 12.4]) + min_r
         actual = model_helper.get_members_gain(p2arg1, p2arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -205,7 +198,7 @@ class TestModel(unittest.TestCase):
         p3arg2[COL_APC] = 0
         p3arg2[COL_APS] = 0
 
-        expected = np.array([16, 16, 16, 16, 16])
+        expected = np.array([16, 16, 16, 16, 16]) + min_r
         actual = model_helper.get_members_gain(p3arg1, p3arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -222,7 +215,7 @@ class TestModel(unittest.TestCase):
         p4arg2[COL_APC] = 1
         p4arg2[COL_APS] = 0
 
-        expected = np.array([4 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size']])
+        expected = np.array([4 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size']]) + min_r
         actual = model_helper.get_members_gain(p4arg1, p4arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -239,7 +232,7 @@ class TestModel(unittest.TestCase):
         p5arg2[COL_APC] = 1
         p5arg2[COL_APS] = 0
 
-        expected = np.array([6.4, 6.4, 10.4 - self.parameter['punish_size'], 10.4 - self.parameter['punish_size'], 10.4 - self.parameter['punish_size']])
+        expected = np.array([6.4, 6.4, 10.4 - self.parameter['punish_size'], 10.4 - self.parameter['punish_size'], 10.4 - self.parameter['punish_size']]) + min_r
         actual = model_helper.get_members_gain(p5arg1, p5arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -256,7 +249,7 @@ class TestModel(unittest.TestCase):
         p6arg2[COL_APC] = 1
         p6arg2[COL_APS] = 0
 
-        expected = np.array([18, 18, 18, 18, 18])
+        expected = np.array([18, 18, 18, 18, 18]) + min_r
         actual = model_helper.get_members_gain(p6arg1, p6arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -273,7 +266,7 @@ class TestModel(unittest.TestCase):
         p7arg2[COL_APC] = 0
         p7arg2[COL_APS] = 1
 
-        expected = np.array([4, 4, 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size']])
+        expected = np.array([4, 4, 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size'], 6 - self.parameter['punish_size']]) + min_r
         actual = model_helper.get_members_gain(p7arg1, p7arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -290,7 +283,7 @@ class TestModel(unittest.TestCase):
         p8arg2[COL_APC] = 0
         p8arg2[COL_APS] = 1
 
-        expected = np.array([8.4 - self.parameter['punish_size'], 8.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size']])
+        expected = np.array([8.4 - self.parameter['punish_size'], 8.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size']]) + min_r
         actual = model_helper.get_members_gain(p8arg1, p8arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -307,7 +300,7 @@ class TestModel(unittest.TestCase):
         p9arg2[COL_APC] = 0
         p9arg2[COL_APS] = 1
 
-        expected = np.array([16, 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size']])
+        expected = np.array([16, 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size']]) + min_r
         actual = model_helper.get_members_gain(p9arg1, p9arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -324,7 +317,7 @@ class TestModel(unittest.TestCase):
         p10arg2[COL_APC] = 1
         p10arg2[COL_APS] = 1
 
-        expected = np.array([4 - self.parameter['punish_size'], 4 - self.parameter['punish_size'], 4 - self.parameter['punish_size'], 4 - self.parameter['punish_size'], 4 - self.parameter['punish_size']])
+        expected = np.array([4 - self.parameter['punish_size'], 4 - self.parameter['punish_size'], 4 - self.parameter['punish_size'], 4 - self.parameter['punish_size'], 4 - self.parameter['punish_size']]) + min_r
         actual = model_helper.get_members_gain(p10arg1, p10arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -341,7 +334,7 @@ class TestModel(unittest.TestCase):
         p11arg2[COL_APC] = 1
         p11arg2[COL_APS] = 1
 
-        expected = np.array([6.4, 8.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'] - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'] - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'] - self.parameter['punish_size']])
+        expected = np.array([6.4, 8.4 - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'] - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'] - self.parameter['punish_size'], 12.4 - self.parameter['punish_size'] - self.parameter['punish_size']]) + min_r
         actual = model_helper.get_members_gain(p11arg1, p11arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -358,7 +351,7 @@ class TestModel(unittest.TestCase):
         p12arg2[COL_APC] = 1
         p12arg2[COL_APS] = 1
 
-        expected = np.array([16, 16, 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size']])
+        expected = np.array([16, 16, 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size'], 18 - self.parameter['punish_size']]) + min_r
         actual = model_helper.get_members_gain(p12arg1, p12arg2, self.parameter)
         self.assertEquals(np.sum(expected == actual), num_members)
 
@@ -377,7 +370,9 @@ class TestModel(unittest.TestCase):
         p1arg2[COL_APC] = 0
         p1arg2[COL_APS] = 0
 
-        expected = 0
+        # 利得最小値を1にするための切片値
+        min_r = self.parameter['cost_punish'] * num_members * 2 + 1
+        expected = min_r
         
         actual = model_helper.get_leaders_gain(p1arg1, p1arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -391,7 +386,7 @@ class TestModel(unittest.TestCase):
         p1arg2[COL_APC] = 0
         p1arg2[COL_APS] = 0
 
-        expected = 2
+        expected = 2 + min_r
         
         actual = model_helper.get_leaders_gain(p1arg1, p1arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -404,7 +399,7 @@ class TestModel(unittest.TestCase):
         p1arg2[COL_APC] = 0
         p1arg2[COL_APS] = 0
 
-        expected = 4
+        expected = 4 + min_r
         
         actual = model_helper.get_leaders_gain(p1arg1, p1arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -417,7 +412,7 @@ class TestModel(unittest.TestCase):
         p1arg2[COL_APC] = 0
         p1arg2[COL_APS] = 0
 
-        expected = 10
+        expected = 10 + min_r
         
         actual = model_helper.get_leaders_gain(p1arg1, p1arg2, self.parameter)
         self.assertEqual(expected, actual)        
@@ -435,7 +430,7 @@ class TestModel(unittest.TestCase):
         p2arg2[COL_APC] = 1
         p2arg2[COL_APS] = 0
 
-        expected = -10
+        expected = -10 + min_r
         
         actual = model_helper.get_leaders_gain(p2arg1, p2arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -449,7 +444,7 @@ class TestModel(unittest.TestCase):
         p2arg2[COL_APC] = 1
         p2arg2[COL_APS] = 0
 
-        expected = -6
+        expected = -6 + min_r
         
         actual = model_helper.get_leaders_gain(p2arg1, p2arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -462,7 +457,7 @@ class TestModel(unittest.TestCase):
         p2arg2[COL_APC] = 1
         p2arg2[COL_APS] = 0
 
-        expected = -2
+        expected = -2 + min_r
         
         actual = model_helper.get_leaders_gain(p2arg1, p2arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -475,7 +470,7 @@ class TestModel(unittest.TestCase):
         p2arg2[COL_APC] = 1
         p2arg2[COL_APS] = 0
 
-        expected = 10
+        expected = 10 + min_r
         
         actual = model_helper.get_leaders_gain(p2arg1, p2arg2, self.parameter)
         self.assertEqual(expected, actual) 
@@ -493,7 +488,7 @@ class TestModel(unittest.TestCase):
         p3arg2[COL_APC] = 0
         p3arg2[COL_APS] = 1
 
-        expected = -10
+        expected = -10 + min_r
         
         actual = model_helper.get_leaders_gain(p3arg1, p3arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -507,7 +502,7 @@ class TestModel(unittest.TestCase):
         p3arg2[COL_APC] = 0
         p3arg2[COL_APS] = 1
 
-        expected = -6
+        expected = -6 + min_r
         
         actual = model_helper.get_leaders_gain(p3arg1, p3arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -520,7 +515,7 @@ class TestModel(unittest.TestCase):
         p3arg2[COL_APC] = 0
         p3arg2[COL_APS] = 1
 
-        expected = -2
+        expected = -2 + min_r
         
         actual = model_helper.get_leaders_gain(p3arg1, p3arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -533,7 +528,7 @@ class TestModel(unittest.TestCase):
         p3arg2[COL_APC] = 0
         p3arg2[COL_APS] = 1
 
-        expected = 10
+        expected = 10 + min_r
         
         actual = model_helper.get_leaders_gain(p3arg1, p3arg2, self.parameter)
         self.assertEqual(expected, actual) 
@@ -551,7 +546,7 @@ class TestModel(unittest.TestCase):
         p4arg2[COL_APC] = 1
         p4arg2[COL_APS] = 1
 
-        expected = -20
+        expected = -20 + min_r
         
         actual = model_helper.get_leaders_gain(p4arg1, p4arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -565,7 +560,7 @@ class TestModel(unittest.TestCase):
         p4arg2[COL_APC] = 1
         p4arg2[COL_APS] = 1
 
-        expected = -14
+        expected = -14 + min_r
         
         actual = model_helper.get_leaders_gain(p4arg1, p4arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -578,7 +573,7 @@ class TestModel(unittest.TestCase):
         p4arg2[COL_APC] = 1
         p4arg2[COL_APS] = 1
 
-        expected = -8
+        expected = -8 + min_r
         
         actual = model_helper.get_leaders_gain(p4arg1, p4arg2, self.parameter)
         self.assertEqual(expected, actual)
@@ -591,7 +586,7 @@ class TestModel(unittest.TestCase):
         p4arg2[COL_APC] = 1
         p4arg2[COL_APS] = 1
 
-        expected = 10
+        expected = 10 + min_r
         
         actual = model_helper.get_leaders_gain(p4arg1, p4arg2, self.parameter)
         self.assertEqual(expected, actual) 
@@ -616,16 +611,120 @@ class TestModel(unittest.TestCase):
         arg2 = np.zeros(NUM_COLUMN)
         arg2[COL_P] = 10
         arg2[COL_ANUM] = 1 
+        arg4 = [0, 0]
 
-        return_value = model_helper.learning_leader(arg1, arg2, self.parameter)
+        return_value = model_helper.learning_leader(arg1, arg2, self.parameter, arg4)
 
         actual = return_value
         expected = arg2
 
-        expected[COL_Qa01] = 0.1 * ( np.mean(np.array(range(NUM_MEMBERS))) + arg2[COL_P] )
+        expected[COL_Qa01] = 0.1 * arg2[COL_P]
         self.assertEquals(np.sum(actual == expected), NUM_COLUMN)
 
+        arg1 = np.zeros((NUM_MEMBERS, NUM_COLUMN))
+        arg1[:, COL_P_LOG] = np.array(range(NUM_MEMBERS))
+        arg1[:, COL_ANUM] = np.full(NUM_MEMBERS, 1)
+        arg2 = np.zeros(NUM_COLUMN)
+        arg2[COL_P] = 10
+        arg2[COL_ANUM] = 1 
+        arg4 = [0, 1]
 
+        return_value = model_helper.learning_leader(arg1, arg2, self.parameter, arg4)
+
+        actual = return_value
+        expected = arg2
+
+        expected[COL_Qa01] = 0.1 *  arg2[COL_P] / LEADER_SAMPLING_TERM
+        self.assertEquals(np.sum(actual == expected), NUM_COLUMN)
+
+        arg1 = np.zeros((NUM_MEMBERS, NUM_COLUMN))
+        arg1[:, COL_P_LOG] = np.array(range(NUM_MEMBERS))
+        arg1[:, COL_ANUM] = np.full(NUM_MEMBERS, 1)
+        arg2 = np.zeros(NUM_COLUMN)
+        arg2[COL_P] = 10
+        arg2[COL_ANUM] = 1 
+        arg4 = [1, 0]
+
+        return_value = model_helper.learning_leader(arg1, arg2, self.parameter, arg4)
+
+        actual = return_value
+        expected = arg2
+
+        expected[COL_Qa01] = 0.1 * ( np.mean(np.array(range(NUM_MEMBERS))) * arg2[COL_P] )
+        self.assertEquals(np.sum(actual == expected), NUM_COLUMN)
+
+        arg1 = np.zeros((NUM_MEMBERS, NUM_COLUMN))
+        arg1[:, COL_P_LOG] = np.array(range(NUM_MEMBERS))
+        arg1[:, COL_ANUM] = np.full(NUM_MEMBERS, 1)
+        arg2 = np.zeros(NUM_COLUMN)
+        arg2[COL_P] = 10
+        arg2[COL_ANUM] = 1 
+        arg4 = [1, 1]
+
+        return_value = model_helper.learning_leader(arg1, arg2, self.parameter, arg4)
+
+        actual = return_value
+        expected = arg2
+
+        expected[COL_Qa01] = 0.1 * ( np.mean(np.array(range(NUM_MEMBERS))) * arg2[COL_P] ) / LEADER_SAMPLING_TERM
+        self.assertEquals(np.sum(actual == expected), NUM_COLUMN)
+
+    def test_get_players_rule(self):
+        # 乱数による決定が入るためepsilon=0の場合のテストを行う
+
+        # argmax_a(Q) = [0,0]
+        arg = np.zeros((NUM_PLAYERS, NUM_COLUMN))
+        arg[:, COL_Qr00] = 1
+        return_values = model_helper.get_players_rule(arg, epshilon=0)
+
+        expected = np.zeros(NUM_PLAYERS)
+        actual = return_values[:, COL_RNUM]
+        self.assertEquals(np.sum(expected == actual), NUM_PLAYERS)
+
+        # argmax_a(Q) = [0,1]
+        arg = np.zeros((NUM_PLAYERS, NUM_COLUMN))
+        arg[:, COL_Qr01] = 1
+        return_values = model_helper.get_players_rule(arg, epshilon=0)
+
+        expected = np.ones(NUM_PLAYERS)
+        actual = return_values[:, COL_RNUM]
+        self.assertEquals(np.sum(expected == actual), NUM_PLAYERS)
+    
+    def test_get_gaming_rule(self):
+        num_players = 7
+        # 最大票数が選択されるかのテスト
+        arg = np.zeros((num_players, NUM_COLUMN))
+        arg[:, COL_RNUM] = np.array([0, 1, 1, 2, 2, 2, 2])
+
+        actual = model_helper.get_gaming_rule(arg)
+        expected = 2
+        self.assertEqual(expected, actual)
+
+        # 票が割れた場合-1を返すかのテスト
+        arg = np.zeros((num_players, NUM_COLUMN))
+        arg[:, COL_RNUM] = np.array([0, 0, 1, 1, 2, 2, 3])
+
+        actual = model_helper.get_gaming_rule(arg)
+        expected = -1
+        self.assertEqual(expected, actual)
+    
+    def test_get_rule_gain(self):
+        arg = np.zeros((NUM_PLAYERS, NUM_COLUMN))
+        arg[:, COL_Qa00] = np.ones(NUM_PLAYERS)
+
+        actual = model_helper.get_rule_gain(arg)
+        expected = np.ones(NUM_PLAYERS)
+        self.assertEquals(np.sum(expected == actual), NUM_PLAYERS)
+    
+    def test_learning_rule(self):
+        arg1 = np.zeros((NUM_PLAYERS, NUM_COLUMN))
+        arg2 = 1
+        arg3 = 2
+        
+        actual = model_helper.learning_rule(arg1, arg2, arg3, alpha=0.1)
+        expected = np.zeros((NUM_PLAYERS, 4))
+        expected[:, 2] = 0.1
+        self.assertEquals(np.sum(actual == expected), NUM_PLAYERS*4)
     
 if __name__ == "__main__":
     unittest.main()

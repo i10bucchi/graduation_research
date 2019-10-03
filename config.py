@@ -6,13 +6,13 @@ import yaml
 # モデル
 NUM_PLAYERS = 21
 NUM_MEMBERS = NUM_PLAYERS-1
-MAX_REP = 12
+MAX_REP = 5
 S = 1
-MAX_STEP = 20000
+MAX_STEP = 2000
 LEADER_SAMPLING_TERM = 100
 
 # カラム
-NUM_COLUMN = 12
+NUM_COLUMN = 17
 
 ## 共有
 COL_P = 0
@@ -21,7 +21,12 @@ COL_Qa00 = 7 # 成員ならQ(c, s), 制裁者ならQ(pc, ps)
 COL_Qa01 = 8
 COL_Qa10 = 9
 COL_Qa11 = 10
-COL_ROLE = 11
+COL_RNUM = 11
+COL_Qr00 = 12
+COL_Qr01 = 13
+COL_Qr10 = 14
+COL_Qr11 = 15
+COL_ROLE = 16
 
 ## 成員用
 COL_P_LOG = 1

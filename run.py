@@ -6,7 +6,9 @@ import numpy as np
 import glob
 import os
 import sys
-from model_helper import generate_players, one_order_game
+import copy
+from tqdm import tqdm
+from model_helper import generate_players, one_order_game, get_players_rule, get_gaming_rule, get_rule_gain, learning_rule
 from config import *
 from make_batch_file import paramfilename
 from multiprocessing import Pool
@@ -14,24 +16,37 @@ from multiprocessing import Pool
 def process(seed, parameter, path):
     np.random.seed(seed=seed)
 
-    thetas = [
-        [0, 0],
-        [0, 1],
-        [1, 0],
-        [1, 1]
-    ]
-    for theta in thetas:
-        players = generate_players()
-        members = players[players['role'] == 'member'].values
-        leader = players[players['role'] == 'leader'].values[0]
+    # [成員の利益を考慮するか否か, 行動試行期間の差]
+    rule_dict = {
+        0: [0, 0],
+        1: [0, 1],
+        2: [1, 0],
+        3: [1, 1]
+    }
 
-        # theta[0]: 成員の利益を考慮するか否か
-        # theta[1]: 行動試行期間の差
-        dfm, dfl, dftmp = one_order_game(members, leader, parameter, theta)
+    qr_l = []
+    r_l = []
+
+    players = generate_players()
+    for _ in tqdm(range(1000)):
+        agreed_rule_number = -1
+        while agreed_rule_number == -1:
+            players['rule_number'] = get_players_rule(players.values)
+            agreed_rule_number = get_gaming_rule(players.values)
+        theta = rule_dict[agreed_rule_number]
+
+        players, mr, lr = one_order_game(players, parameter, theta)
+
+        rule_reward = get_rule_gain(players.values)
+
+        players.loc[:, ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']] = learning_rule(players.values, rule_reward, agreed_rule_number)
         
-        pd.concat(dfm).to_csv(path + 'csv/{theta}_members_q_seed={seed}.csv'.format(theta=''.join([str(t) for t in theta]), seed=seed))
-        pd.concat(dfl).to_csv(path + 'csv/{theta}_leader_q_seed={seed}.csv'.format(theta=''.join([str(t) for t in theta]), seed=seed))
-        pd.concat(dftmp).to_csv(path + 'csv/{theta}_df_tmp_seed={seed}.csv'.format(theta=''.join([str(t) for t in theta]), seed=seed))
+        # プロット用にログ記録
+        qr_l.append(players.loc[:, ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].mean().values)
+        r_l.append([mr, lr])
+    
+    pd.DataFrame(qr_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qr_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(r_l, columns=['member', 'leader']).to_csv(path + 'csv/players_reward_seed={seed}.csv'.format(seed=seed))
 
 # 引数を複数取るために必要
 # https://qiita.com/kojpk/items/2919362de582a7d8de9e

@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import warnings
 import copy
+from tqdm import tqdm
 from config import *
 
 warnings.filterwarnings('error')
@@ -335,7 +336,7 @@ def get_gaming_rule(players):
     rule_hyonum = np.bincount(players[:, COL_RNUM].astype(np.int64))
     max_rule = np.argmax(rule_hyonum)
 
-    if np.sum(max_rule == rule_hyonum) == 1:
+    if np.sum(rule_hyonum[max_rule] == rule_hyonum) == 1:
         return max_rule
     else:
         return -1

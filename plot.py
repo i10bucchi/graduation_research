@@ -6,115 +6,53 @@ import matplotlib.pyplot as plt
 import config 
 import make_batch_file
 
-def plot_digest(rootpath, datapaths):
-    '''
-    abstract:
-        指定した全てのパラメーターの実験結果比較を平均値を使って行う
-    input:
-        datapaths:    list
-            各実験結果のcsvが格納されている場所へのパス
-    output:
-        ---
-    '''
-    df_m_folders = []
-    df_l_folders = []
-    
-    for datapath in datapaths:
-        df_m_list = []
-        df_l_list = []
-        for i in range(1, config.MAX_REP):
-            df_m = pd.read_csv('{}/csv/members_q_seed={}.csv'.format(datapath, i), index_col='step', header=0).drop('Unnamed: 0', axis=1)
-            df_l = pd.read_csv('{}/csv/leader_q_seed={}.csv'.format(datapath, i), index_col='step', header=0).drop('Unnamed: 0', axis=1)
-            df_m['rep'] = i
-            df_l['rep'] = i
-            df_m_list.append(df_m)
-            df_l_list.append(df_l)
-        df_m_folders.append( pd.concat(df_m_list) )
-        df_l_folders.append( pd.concat(df_l_list) )
-    
-    if ( len(datapaths) >= 1 ) and ( len(datapaths) <= 4 ):
-        cols = len(datapaths)
-        rows = 1
-        
-    else:
-        cols = 4
-        rows = int(len(datapaths) / 4) + 1
-
-    fig = plt.figure(figsize=(15, 20))
-    plt.subplots_adjust(wspace=0.2, hspace=0.2)
-
-    for i in range(0, len(df_m_folders)):
-        df_plot = df_m_folders[i].groupby(['step']).mean()
-        plt.subplot(rows, cols, i+1)
-        
-        plt.plot(df_plot['Qa_00'], label='Qa_00', alpha=0.6)
-        plt.plot(df_plot['Qa_01'], label='Qa_01', alpha=0.6)
-        plt.plot(df_plot['Qa_10'], label='Qa_10', alpha=0.6)
-        plt.plot(df_plot['Qa_11'], label='Qa_11', alpha=0.6)
-        plt.title(datapaths[i].split('/')[2])
-    plt.legend(loc='lower right', bbox_to_anchor=(1.2, 0, 0, 0))
-    plt.savefig('{}/result_digest_members.png'.format(rootpath))
-
-    fig = plt.figure(figsize=(15, 20))
-    plt.subplots_adjust(wspace=0.2, hspace=0.2)
-
-    for i in range(0, len(df_l_folders)):
-        df_plot = df_l_folders[i].groupby(['step']).mean()
-        plt.subplot(rows, cols, i+1)
-        
-        plt.plot(df_plot['Qa_00'], label='Qa_00', alpha=0.6)
-        plt.plot(df_plot['Qa_01'], label='Qa_01', alpha=0.6)
-        plt.plot(df_plot['Qa_10'], label='Qa_10', alpha=0.6)
-        plt.plot(df_plot['Qa_11'], label='Qa_11', alpha=0.6)
-        plt.title(datapaths[i].split('/')[2])
-    plt.legend(loc='lower right', bbox_to_anchor=(1.2, 0, 0, 0))
-    plt.savefig('{}/result_digest_leaders.png'.format(rootpath))
-
 def plot(datapath):
-    # 成員について
-    df_l = []
-    for i in range(1, config.MAX_REP):
-        df = pd.read_csv('{}csv/members_q_seed={}.csv'.format(datapath, i), index_col='step', header=0).drop('Unnamed: 0', axis=1)
-        df_l.append(df)
+    df_q_m = []
+    df_q_l = []
+    df_r = []
 
-    cols = 5
-    rows = 4
-    fig = plt.figure(figsize=(15, 15))
-    plt.subplots_adjust(wspace=0.2, hspace=0.5)
-    for i in range(0, len(df_l)):
-        df_plot = df_l[i].groupby('step').mean()
-        del df_plot['member_id']
-        plt.subplot(rows, cols, i+1)
-        
-        plt.plot(df_plot['Qa_00'], label='Qa_00', alpha=0.6)
-        plt.plot(df_plot['Qa_01'], label='Qa_01', alpha=0.6)
-        plt.plot(df_plot['Qa_10'], label='Qa_10', alpha=0.6)
-        plt.plot(df_plot['Qa_11'], label='Qa_11', alpha=0.6)
-        plt.title('seed={}'.format(i+1))
-        # plt.ylim(0, 40)
-    plt.legend(loc='lower right', bbox_to_anchor=(1.5, 0, 0, 0))
-    plt.savefig(datapath + 'plot_img/members_dynamics.png')
-
-    # 制裁者について
-    df_l = []
     for i in range(1, config.MAX_REP):
-        df = pd.read_csv('{}csv/leader_q_seed={}.csv'.format(datapath, i), index_col='step', header=0).drop('Unnamed: 0', axis=1)
-        df_l.append(df)
-    
-    cols = 5
-    rows = 4
-    fig = plt.figure(figsize=(15, 12))
-    plt.subplots_adjust(wspace=0.2, hspace=0.5)
-    for i in range(0, len(df_l)):
-        plt.subplot(rows, cols, i+1)
-        plt.plot(df_l[i]['Qa_00'], label='Qa_00')
-        plt.plot(df_l[i]['Qa_01'], label='Qa_01')
-        plt.plot(df_l[i]['Qa_10'], label='Qa_10')
-        plt.plot(df_l[i]['Qa_11'], label='Qa_11')
-        plt.title('seed={}'.format(i+1))
-        # plt.ylim(0, 3000)
-    plt.legend(loc='lower right', bbox_to_anchor=(1.5, 0, 0, 0))
-    plt.savefig(datapath + 'plot_img/leader_dynamics.png')
+        tmp = pd.read_csv('{}/csv/players_qrm_seed={}.csv'.format(datapath, i), header=0).rename(columns={'Unnamed: 0':'step'})
+        df_q_m.append(tmp)
+        tmp = pd.read_csv('{}/csv/players_qrl_seed={}.csv'.format(datapath, i), header=0).rename(columns={'Unnamed: 0':'step'})
+        df_q_l.append(tmp)
+        tmp = pd.read_csv('{}/csv/players_reward_seed={}.csv'.format(datapath, i), header=0).rename(columns={'Unnamed: 0':'step'})
+        df_r.append(tmp)
+
+
+    figure = plt.figure(figsize=(12, 8))
+
+    plt.subplot(2, 1, 1)
+    df_q_plot = pd.concat(df_q_m).groupby('step').mean()
+    plt.plot(df_q_plot['Qr_00'], label='$dictatorship, online$', alpha=0.7)
+    plt.plot(df_q_plot['Qr_01'], label='$dictatorship, batch$', alpha=0.7)
+    plt.plot(df_q_plot['Qr_10'], label='$democracy,\:\,  online$', alpha=0.7)
+    plt.plot(df_q_plot['Qr_11'], label='$democracy,\:\,  batch$', alpha=0.7)
+
+    plt.title('Q value for game rule', fontsize=25)
+    plt.xlabel('t', fontsize=20)
+    plt.ylabel('$Qr$', fontsize=20)
+    plt.tick_params(labelsize=20)
+
+    plt.grid()
+    plt.legend(bbox_to_anchor=(1, 1), loc='upper left', fontsize=20)
+
+
+    plt.subplot(2, 1, 2)
+    df_q_plot = pd.concat(df_q_l).groupby('step').mean()
+    plt.plot(df_q_plot['Qr_00'], label='$dictatorship, online$', alpha=0.7)
+    plt.plot(df_q_plot['Qr_01'], label='$dictatorship, batch$', alpha=0.7)
+    plt.plot(df_q_plot['Qr_10'], label='$democracy,\:\,  online$', alpha=0.7)
+    plt.plot(df_q_plot['Qr_11'], label='$democracy,\:\,  batch$', alpha=0.7)
+
+    plt.title('Q value for game rule', fontsize=25)
+    plt.xlabel('t', fontsize=20)
+    plt.ylabel('$Qr$', fontsize=20)
+    plt.tick_params(labelsize=20)
+
+    plt.grid()
+
+    plt.savefig(datapath + 'plot_img/players_q_value.png')
 
 if __name__== "__main__":
     args = sys.argv
@@ -129,4 +67,3 @@ if __name__== "__main__":
             os.mkdir(plot_img_dir)
         plot(rootpath + dirname + '/')
         datapaths.append(rootpath + dirname + '/')
-    plot_digest(rootpath, datapaths)

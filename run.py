@@ -24,7 +24,8 @@ def process(seed, parameter, path):
         3: [1, 1]
     }
 
-    qr_l = []
+    q_m_l = []
+    q_l_l = []
     r_l = []
 
     players = generate_players()
@@ -40,7 +41,8 @@ def process(seed, parameter, path):
         players.loc[:, ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']] = learning_rule(players.values, agreed_rule_number)
         
         # プロット用にログ記録
-        qr_l.append(players.loc[:, ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].mean().values)
+        q_m_l.append(players.loc[players['role'] == 'member', ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].mean().values)
+        q_l_l.append(players.loc[players['role'] == 'leader', ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].values)
         r_l.append(
             [
                 np.mean(players.loc[players['role'] == 'member', 'rule_reward'].values),
@@ -48,7 +50,8 @@ def process(seed, parameter, path):
             ]
         )
     
-    pd.DataFrame(qr_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qr_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(q_m_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrm_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(q_l_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrl_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(r_l, columns=['member', 'leader']).to_csv(path + 'csv/players_reward_seed={seed}.csv'.format(seed=seed))
 
 # 引数を複数取るために必要

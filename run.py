@@ -29,7 +29,7 @@ def process(seed, parameter, path):
     r_l = []
 
     players = generate_players()
-    for _ in tqdm(range(1000)):
+    for _ in tqdm(range(1500)):
         agreed_rule_number = -1
         while agreed_rule_number == -1:
             players['rule_number'] = get_players_rule(players.values)
@@ -42,7 +42,7 @@ def process(seed, parameter, path):
         
         # プロット用にログ記録
         q_m_l.append(players.loc[players['role'] == 'member', ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].mean().values)
-        q_l_l.append(players.loc[players['role'] == 'leader', ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].values)
+        q_l_l.append(players.loc[players['role'] == 'leader', ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].values[0])
         r_l.append(
             [
                 np.mean(players.loc[players['role'] == 'member', 'rule_reward'].values),

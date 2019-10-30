@@ -21,7 +21,8 @@ def plot(datapath):
 
 
     figure = plt.figure(figsize=(12, 8))
-
+    plt.subplots_adjust(hspace=0.4)
+    
     plt.subplot(2, 1, 1)
     df_q_plot = pd.concat(df_q_m).groupby('step').mean()
     plt.plot(df_q_plot['Qr_00'], label='$dictatorship, online$', alpha=0.7)
@@ -52,7 +53,7 @@ def plot(datapath):
 
     plt.grid()
 
-    plt.savefig(datapath + 'plot_img/players_q_value.png')
+    plt.savefig(datapath + 'plot_img/players_q_value.png', bbox_inches="tight")
 
 if __name__== "__main__":
     args = sys.argv

@@ -26,33 +26,29 @@ def process(seed, parameter, path):
 
     q_m_l = []
     q_l_l = []
-    r_l = []
+    action_rate_l = []
 
     players = generate_players()
-    for _ in tqdm(range(1000)):
+    for _ in tqdm(range(2000)):
         agreed_rule_number = -1
         while agreed_rule_number == -1:
-            players['rule_number'] = get_players_rule(players.values)
-            agreed_rule_number = get_gaming_rule(players.values)
+            players[:, COL_RNUM] = get_players_rule(players)
+            agreed_rule_number = get_gaming_rule(players)
         theta = rule_dict[agreed_rule_number]
 
-        players = one_order_game(players, parameter, theta)
+        players, action_rate = one_order_game(players, parameter, theta)
 
-        players.loc[:, ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']] = learning_rule(players.values, agreed_rule_number)
+        players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]] = learning_rule(players, agreed_rule_number)
         
         # プロット用にログ記録
-        q_m_l.append(players.loc[players['role'] == 'member', ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].mean().values)
-        q_l_l.append(players.loc[players['role'] == 'leader', ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].values)
-        r_l.append(
-            [
-                np.mean(players.loc[players['role'] == 'member', 'rule_reward'].values),
-                np.mean(players.loc[players['role'] == 'leader', 'rule_reward'].values)
-            ]
-        )
+        players_qr = players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]]
+        q_m_l.append(np.mean(players_qr[players[:, COL_ROLE] == ROLE_MEMBER, :], axis=0))
+        q_l_l.append(players_qr[players[:, COL_ROLE] == ROLE_LEADER, :][0])
+        action_rate_l.append(action_rate)
     
     pd.DataFrame(q_m_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrm_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(q_l_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrl_seed={seed}.csv'.format(seed=seed))
-    pd.DataFrame(r_l, columns=['member', 'leader']).to_csv(path + 'csv/players_reward_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(action_rate_l, columns=['cooperation_rate', 'supporting_rate']).to_csv(path + 'csv/players_action_rate_seed={seed}.csv'.format(seed=seed))
 
 # 引数を複数取るために必要
 # https://qiita.com/kojpk/items/2919362de582a7d8de9e

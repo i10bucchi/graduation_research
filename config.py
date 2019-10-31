@@ -6,7 +6,7 @@ import yaml
 # モデル
 NUM_PLAYERS = 21
 NUM_MEMBERS = NUM_PLAYERS-1
-MAX_REP = 5
+MAX_REP = 21
 S = 1
 MAX_STEP = 20000
 LEADER_SAMPLING_TERM = 100
@@ -50,6 +50,10 @@ ALPHA_LIST = [0.8]
 
 # 設定
 MULTI = 4
+
+# プログラム用
+ROLE_MEMBER = 1
+ROLE_LEADER = 2
 
 def load_parameter(path):
     f = open(path, "r")

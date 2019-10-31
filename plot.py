@@ -9,16 +9,12 @@ import make_batch_file
 def plot(datapath):
     df_q_m = []
     df_q_l = []
-    df_r = []
 
     for i in range(1, config.MAX_REP):
         tmp = pd.read_csv('{}/csv/players_qrm_seed={}.csv'.format(datapath, i), header=0).rename(columns={'Unnamed: 0':'step'})
         df_q_m.append(tmp)
         tmp = pd.read_csv('{}/csv/players_qrl_seed={}.csv'.format(datapath, i), header=0).rename(columns={'Unnamed: 0':'step'})
         df_q_l.append(tmp)
-        tmp = pd.read_csv('{}/csv/players_reward_seed={}.csv'.format(datapath, i), header=0).rename(columns={'Unnamed: 0':'step'})
-        df_r.append(tmp)
-
 
     figure = plt.figure(figsize=(12, 8))
     plt.subplots_adjust(hspace=0.4)

@@ -38,7 +38,11 @@ def process(seed, parameter, path):
 
         players, action_rate = one_order_game(players, parameter, theta)
 
-        players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]] = learning_rule(players, agreed_rule_number)
+        players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]] = learning_rule(
+            players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]],
+            players[:, COL_RREWARD],
+            agreed_rule_number
+        )
         
         # プロット用にログ記録
         players_qr = players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]]

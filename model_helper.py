@@ -379,13 +379,15 @@ def get_rule_gain(players):
     '''
     return np.max(players[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], axis=1)
 
-def learning_rule(players, rule_number, alpha=0.8):
+def learning_rule(players_qr, rewards, rule_number, alpha=0.8):
     '''
     abstract:
         ゲームルールの学習を行う
     input:
-        players:    np.array shape=[NUM_PLAYERS, NUM_COLUMN]
-            成員の役割を持つプレイヤー
+        players_qr:    np.array shape=[NUM_PLAYERS, 4]
+            プレイヤーのルールQテーブル
+        rewards:
+            ルールの報酬
         rule_number:    int
             採用したルール番号
         alpha:          float
@@ -395,13 +397,11 @@ def learning_rule(players, rule_number, alpha=0.8):
             更新したQ値
     '''
 
-    # 各プレイヤーにとってのルールの評価値
-    r = players[:, COL_RREWARD]
-
     # 今回更新するQ値以外のerrorを0にするためのマスク
-    mask = np.zeros((players.shape[0], 4))
+    mask = np.zeros((NUM_PLAYERS, 4))
     mask[:, rule_number] = 1
 
     # 更新
-    error = mask * (np.tile(r,(4,1)).T - players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]])
-    return players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]] + ( alpha * error )
+    error = mask * (np.tile(rewards,(4,1)).T - players_qr)
+
+    return players_qr + ( alpha * error )

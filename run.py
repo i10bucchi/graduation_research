@@ -29,7 +29,11 @@ def process(seed, parameter, path):
     action_rate_l = []
 
     players = generate_players()
+<<<<<<< HEAD
     for _ in tqdm(range(2000)):
+=======
+    for _ in tqdm(range(1500)):
+>>>>>>> 3c0c93a358511e412add80147465bd7470645801
         agreed_rule_number = -1
         while agreed_rule_number == -1:
             players[:, COL_RNUM] = get_players_rule(players)
@@ -45,10 +49,21 @@ def process(seed, parameter, path):
         )
         
         # プロット用にログ記録
+<<<<<<< HEAD
         players_qr = players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]]
         q_m_l.append(np.mean(players_qr[players[:, COL_ROLE] == ROLE_MEMBER, :], axis=0))
         q_l_l.append(players_qr[players[:, COL_ROLE] == ROLE_LEADER, :][0])
         action_rate_l.append(action_rate)
+=======
+        q_m_l.append(players.loc[players['role'] == 'member', ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].mean().values)
+        q_l_l.append(players.loc[players['role'] == 'leader', ['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']].values[0])
+        r_l.append(
+            [
+                np.mean(players.loc[players['role'] == 'member', 'rule_reward'].values),
+                np.mean(players.loc[players['role'] == 'leader', 'rule_reward'].values)
+            ]
+        )
+>>>>>>> 3c0c93a358511e412add80147465bd7470645801
     
     pd.DataFrame(q_m_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrm_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(q_l_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrl_seed={seed}.csv'.format(seed=seed))

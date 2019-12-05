@@ -51,6 +51,10 @@ def generate_players():
     players[:, COL_Qr10] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qr11] = np.random.rand(NUM_PLAYERS)
     players[:, COL_ROLE] = -1
+    players[:, COL_Qap00] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_Qap01] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_Qap10] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_Qap11] = np.random.rand(NUM_PLAYERS)
 
     return players
 
@@ -267,10 +271,10 @@ def one_order_game(players, parameter, theta):
     for i in range(MAX_STEP):
         # 行動決定
         if theta[1] == 0:
-            leader[[COL_APC, COL_APS]], leader[COL_ANUM] = get_leader_action(leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
+            leader[[COL_APC, COL_APS]], leader[COL_ANUM] = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
         else:
             if i % LEADER_SAMPLING_TERM == 0:
-                leader[[COL_APC, COL_APS]], leader[COL_ANUM]  = get_leader_action(leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
+                leader[[COL_APC, COL_APS]], leader[COL_ANUM]  = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
         members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_members_action(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
         
         # 利得算出
@@ -298,8 +302,8 @@ def one_order_game(players, parameter, theta):
         members[:, COL_P] = 0
 
         if theta[1] == 0:
-            leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_leader(
-                members[:, COL_P_LOG], leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
+            leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_leader(
+                members[:, COL_P_LOG], leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
                 leader[COL_ANUM],
                 leader[COL_P],
                 parameter,
@@ -309,8 +313,8 @@ def one_order_game(players, parameter, theta):
             members[:, COL_P_LOG] = 0
         else:
             if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
-                leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_leader(
-                    members[:, COL_P_LOG], leader[[COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
+                leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_leader(
+                    members[:, COL_P_LOG], leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
                     leader[COL_ANUM],
                     leader[COL_P],
                     parameter,
@@ -328,7 +332,7 @@ def one_order_game(players, parameter, theta):
 
     return players, ( c_num.sum() / NUM_MEMBERS / MAX_STEP, s_num.sum() / NUM_MEMBERS / MAX_STEP )
 
-def get_players_rule(players, epshilon=0.5):
+def get_players_rule(players, epshilon=0.9):
     '''
     abstract:
         epshilon-greedy法によりプレイヤーの支持するゲームルールを決定する

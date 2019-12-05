@@ -7,8 +7,9 @@ import glob
 import os
 import sys
 import copy
+import pandas 
 from tqdm import tqdm
-from model_helper import generate_players, one_order_game, get_players_rule, get_gaming_rule, get_rule_gain, learning_rule
+from model_helper import generate_players, exec_game
 from config import *
 from make_batch_file import paramfilename
 from multiprocessing import Pool
@@ -16,43 +17,10 @@ from multiprocessing import Pool
 def process(seed, parameter, path):
     np.random.seed(seed=seed)
 
-    # [成員の利益を考慮するか否か, 行動試行期間の差]
-    rule_dict = {
-        0: [0, 0],
-        1: [0, 1],
-        2: [1, 0],
-        3: [1, 1]
-    }
-
-    q_m_l = []
-    q_l_l = []
-    action_rate_l = []
-
     players = generate_players()
-    for _ in tqdm(range(2000)):
-        agreed_rule_number = -1
-        while agreed_rule_number == -1:
-            players[:, COL_RNUM] = get_players_rule(players)
-            agreed_rule_number = get_gaming_rule(players)
-        theta = rule_dict[agreed_rule_number]
+    players, df = exec_game(players, parameter)
 
-        players, action_rate = one_order_game(players, parameter, theta)
-
-        players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]] = learning_rule(
-            players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]],
-            players[:, COL_RREWARD],
-            agreed_rule_number
-        )
-        
-        # プロット用にログ記録
-        players_qr = players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]]
-        q_m_l.append(np.mean(players_qr[players[:, COL_ROLE] == ROLE_MEMBER, :], axis=0))
-        q_l_l.append(players_qr[players[:, COL_ROLE] == ROLE_LEADER, :][0])
-        action_rate_l.append(action_rate)
-    
-    pd.DataFrame(q_m_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrm_seed={seed}.csv'.format(seed=seed))
-    pd.DataFrame(q_l_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrl_seed={seed}.csv'.format(seed=seed))
-    pd.DataFrame(action_rate_l, columns=['cooperation_rate', 'supporting_rate']).to_csv(path + 'csv/players_action_rate_seed={seed}.csv'.format(seed=seed))
+    df.to_csv(path + f'csv/result_action_num_seed={seed}.csv')
 
 # 引数を複数取るために必要
 # https://qiita.com/kojpk/items/2919362de582a7d8de9e

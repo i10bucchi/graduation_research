@@ -277,7 +277,7 @@ def one_order_game(players, parameter, theta):
 
     # ゲーム実行
     step = 0
-    for i in tqdm(range(MAX_STEP)):
+    for i in range(MAX_STEP):
         # 行動決定
         if theta[1] == 0:
             leader[[COL_APC, COL_APS]], leader[COL_ANUM] = get_leader_action(leader[COL_Qap00:COL_Qap11+1], parameter)
@@ -289,14 +289,14 @@ def one_order_game(players, parameter, theta):
             members[members[:, COL_F_TIMER] == 0, COL_AC:COL_AF+1] = tmp[0]
             members[members[:, COL_F_TIMER] == 0, COL_ANUM] = tmp[1]
             members[(members[:, COL_F_TIMER] == 0) & (members[:, COL_AF] == 0), COL_F_TIMER] = 1
-            members[(members[:, COL_F_TIMER] == 0) & (members[:, COL_AF] == 1), COL_F_TIMER] = LEADER_SAMPLING_TERM
+            members[(members[:, COL_F_TIMER] == 0) & (members[:, COL_AF] == 1), COL_F_TIMER] = MEMBERS_SAMPLING_TERM
         members[:, COL_F_TIMER] -= 1
         
         # 利得算出
         mrs = get_members_gain(members[:, COL_AC], members[:, COL_AS], leader[COL_APC], leader[COL_APS], parameter)
         lr = get_leaders_gain(members[:, COL_AC], members[:, COL_AS], leader[COL_APC], leader[COL_APS], parameter)
         members[members[:, COL_AF] == 0, COL_P] += mrs[members[:, COL_AF] == 0]
-        members[members[:, COL_AF] == 1, COL_P] += mrs[members[:, COL_AF] == 1]/LEADER_SAMPLING_TERM
+        members[members[:, COL_AF] == 1, COL_P] += mrs[members[:, COL_AF] == 1]/MEMBERS_SAMPLING_TERM
         leader[COL_P] += lr
         
         step += 1

@@ -17,13 +17,6 @@ a_l = np.array([
     [1, 1]
 ])
 
-a_l_str = np.array([
-    '00',
-    '01',
-    '10',
-    '11'
-])
-
 def generate_players():
     '''
     abstract:
@@ -46,10 +39,7 @@ def generate_players():
     players[:, COL_Qa01] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qa10] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qa11] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_RNUM] = -1
     players[:, COL_QrLEADER] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qr01] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qr10] = np.random.rand(NUM_PLAYERS)
     players[:, COL_QrMEMBERS] = np.random.rand(NUM_PLAYERS)
     players[:, COL_ROLE] = -1
     players[:, COL_Qap00] = np.random.rand(NUM_PLAYERS)
@@ -81,42 +71,53 @@ def get_action_inpgg(qa, parameter):
         
     return np.tile(a_l, (action.shape[0], 1))[action], action
 
-def get_members_gain(members_ac, members_as, leader_apc, leader_aps, parameter, num_members=NUM_MEMBERS):
+def get_members_gain(members_ac, members_as, members_cid, leaders_cid, leaders_apc, leaders_aps, parameter):
     '''
     abstract:
         各成員と制裁者の行動から成員の利得を算出
     input:
-        members_ac:    np.array shape=[NUM_MEMBERS]
+        members_ac:    np.array shape=[-1,]
             成員の協調の選択の有無
-        members_as:    np.array shape=[NUM_MEMBERS]
+        members_as:    np.array shape=[-1,]
             成員の支援の選択の有無
-        leader_apc:    int
+        members_cid:   np.array shape=[-1,]
+            成員が所属しているコミュニティの制裁者のPLAYERID
+        leaders_id:    np.array shape=[-1,]
+            制裁者の自身のPLAYERID
+        leaders_apc:   np.array shape=[-1,]
             制裁者の非協調者制裁の選択の有無
-        leader_aps:    int
+        leaders_aps:   np.array shape=[-1,]
             制裁者の非支援者制裁の選択の有無
         parameter:      dict 
             実験パラメータ
     output:
-        :   np.array shape=[NUM_MEMBERS]
+        :   np.array shape=[-1,]
             全ての成員の利得
     '''
 
-    # 社会的ジレンマ下での成員の得点計算
-    d = (parameter['cost_cooperate'] * np.sum(members_ac) * parameter['power_social']) / (num_members)
-    # 非協力の場合はparameter['cost_cooperate']がもらえる
-    cp = (parameter['cost_cooperate'] * (np.ones(num_members) - members_ac))
-    # 非支援の場合はparameter['cost_support']がもらえる
-    sp = (parameter['cost_support'] * (np.ones(num_members) - members_as))
-    # 非協力の場合に制裁者が罰を行使してたら罰される
-    pcp = (parameter['punish_size'] * leader_apc * (np.ones(num_members) - members_ac))
-    # 非支援の場合に制裁者が罰を行使してたら罰される
-    psp = (parameter['punish_size'] * leader_aps * (np.ones(num_members) - members_as))
-    # 利得がマイナスまたは0にならないように最小利得を決定
-    min_r = parameter['punish_size'] * 2 + 1
-    
-    return d + cp + sp - pcp - psp + min_r
+    comunities = np.unique(members_cid)
+    r = np.zeros(members_ac.shape[0]).astype(np.float64)
+    for cid in comunities:
+        num_members = np.sum(members_cid == cid)
+        if num_members == 1:
+            r[members_cid == cid] = parameter['cost_cooperate'] * parameter['power_social'] / 2.0
+        elif num_members > 1:
+            # 社会的ジレンマ下での成員の得点計算
+            d = (parameter['cost_cooperate'] * np.sum(members_ac[members_cid == cid]) * parameter['power_social']) / (num_members)
+            # 非協力の場合はparameter['cost_cooperate']がもらえる
+            cp = (parameter['cost_cooperate'] * (np.ones(num_members) - members_ac[members_cid == cid]))
+            # 非支援の場合はparameter['cost_support']がもらえる
+            sp = (parameter['cost_support'] * (np.ones(num_members) - members_as[members_cid == cid]))
+            # 非協力の場合に制裁者が罰を行使してたら罰される
+            pcp = (parameter['punish_size'] * leaders_apc[leaders_cid == cid] * (np.ones(num_members) - members_ac[members_cid == cid]))
+            # 非支援の場合に制裁者が罰を行使してたら罰される
+            psp = (parameter['punish_size'] * leaders_aps[leaders_cid == cid] * (np.ones(num_members) - members_as[members_cid == cid]))
+            r[members_cid == cid] = d + cp + sp - pcp - psp
+        else:
+            pass
+    return r
 
-def get_leaders_gain(members_ac, members_as, leader_apc, leader_aps, parameter, num_members=NUM_MEMBERS):
+def get_leaders_gain(members_ac, members_as, members_cid, leaders_id, leaders_apc, leaders_aps, parameter):
     '''
     abstract:
         各成員と制裁者の行動から制裁者の利得を算出
@@ -125,6 +126,8 @@ def get_leaders_gain(members_ac, members_as, leader_apc, leader_aps, parameter, 
             成員の協調の選択の有無
         members_as:    np.array shape=[NUM_MEMBERS]
             成員の支援の選択の有無
+        leaders_id:
+            制裁者のPLAYERID
         leader_apc:    int
             制裁者の非協調者制裁の選択の有無
         leader_aps:    int
@@ -136,16 +139,22 @@ def get_leaders_gain(members_ac, members_as, leader_apc, leader_aps, parameter, 
             制裁者の利得
     '''
 
-    # 制裁者の得点計算
-    tax = np.sum(members_as) * parameter['cost_support']
-    # 非協力者制裁を行うコストを支払う
-    pcc = parameter['cost_punish'] * leader_apc * (np.sum(np.ones(num_members) - members_ac))
-    # 非支援者制裁を行うコストを支払う
-    psc = parameter['cost_punish'] * leader_aps * (np.sum(np.ones(num_members) - members_as))
-    # 利得がマイナスまたは0にならないように最小利得を決定
-    min_r = parameter['cost_punish'] * num_members * 2 + 1
+    r = np.zeros(leaders_apc.shape[0])
 
-    return tax - pcc - psc + min_r
+    for cid, leader_apc, leader_aps in zip(leaders_id, leaders_apc, leaders_aps):
+        num_members = np.sum(members_cid == cid)
+        if num_members != 0:
+            # 制裁者の得点計算
+            tax =  np.sum(members_as[members_cid == cid]) * parameter['cost_support']
+            # 非協力者制裁を行うコストを支払う
+            pcc =  parameter['cost_punish'] * leader_apc * (np.sum(np.ones(num_members) - members_ac[members_cid == cid]))
+            # 非支援者制裁を行うコストを支払う
+            psc =  parameter['cost_punish'] * leader_aps * (np.sum(np.ones(num_members) - members_as[members_cid == cid]))
+            r[leaders_id == cid] = tax - pcc - psc
+        else:
+            r[leaders_id == cid] = 0
+
+    return r
 
 def learning_action(qa, rewards, anum, alpha=0.8):
     '''
@@ -173,22 +182,22 @@ def learning_action(qa, rewards, anum, alpha=0.8):
 
     return qa + ( alpha * error )
 
-def get_newcomunity(members_comunity_reward, members_staying_comunity):
+def get_newcomunity(comunity_reward, comunity_ids, num_members):
     '''
     abstract:
         どこのコミュニティに加入するかを決定する
     input:
-        members_comunity_reward:    np.array shape=[-1,]
+        comunity_reward:    np.array shape=[-1,]
             自身が現在のコミュニティーで得ることのできた利得
-        members_staying_comunity:   np.array shape=[-1,]
+        comunity_ids:   np.array shape=[-1,]
             各成員が所属しているコミュニティの制裁者のPLAYERID
     output:
         :   np.array shape=[-1,]
             各成員が次に所属するコミュニティの制裁者のPLAYERID(無所属の場合は-1)
     '''
 
-    
-    
+    prob = comunity_reward / comunity_reward.sum()
+    return np.random.choice(comunity_ids, size=num_members, p=prob)
 
 def exec_pgg(players, parameter):
     '''
@@ -211,27 +220,53 @@ def exec_pgg(players, parameter):
     members = players[players[:, COL_ROLE] == ROLE_MEMBER, :]
     leaders = players[players[:, COL_ROLE] == ROLE_LEADER, :]
 
+    # 最初は等確率に選ばれるようにするため
+    leaders[:, COL_COMUNITY_REWARD] = 1
+
     # ゲーム実行
     for i in range(20):
         # コミュニティの模倣(移動)
-        members[:, COL_COMUNITY] = get_newcomunity(members[:, COL_COMUNITY_REWARD])
-        members[:, COL_COMUNITY_REWARD] = 0
+        members[:, COL_COMUNITY] = get_newcomunity(leaders[:, COL_COMUNITY_REWARD], leaders[:, COL_PLAYERID], members.shape[0])
+        leaders[:, COL_COMUNITY_REWARD] = 0
         
         # コミュニティないで罰ありPGG
         for i in range(MAX_STEP):
             # 行動決定
             if i % LEADER_SAMPLING_TERM == 0:
-                leaders[:, [COL_APC, COL_APS]], leaders[COL_ANUM]  = get_action_inpgg(leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
+                leaders[:, [COL_APC, COL_APS]], leaders[:, COL_ANUM]  = get_action_inpgg(leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
             members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_action_inpgg(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
-            
             # 利得算出
-            mrs = get_members_gain(members[:, COL_AC], members[:, COL_AS], leaders[COL_APC], leaders[COL_APS], parameter)
-            lrs = get_leaders_gain(members[:, COL_AC], members[:, COL_AS], leaders[COL_APC], leaders[COL_APS], parameter)
-            members[:, COL_GAME_REWARD] = mrs
-            leaders[:, COL_GAME_REWARD] = lrs
-            members[:, COL_COMUNITY_REWARD] += mrs
+            mrs = get_members_gain(
+                members[:, COL_AC],
+                members[:, COL_AS],
+                members[:, COL_COMUNITY],
+                leaders[:, COL_PLAYERID],
+                leaders[:, COL_APC],
+                leaders[:, COL_APS], 
+                parameter
+            )
+            lrs = get_leaders_gain(
+                members[:, COL_AC],
+                members[:, COL_AS],
+                members[:, COL_COMUNITY],
+                leaders[:, COL_PLAYERID],
+                leaders[:, COL_APC],
+                leaders[:, COL_APS],
+                parameter
+            )
+
+            members[:, COL_GAME_REWARD] += mrs
+            leaders[:, COL_GAME_REWARD] += lrs
             members[:, COL_ROLE_REWARD] += mrs
             leaders[:, COL_ROLE_REWARD] += lrs
+
+            # コミュニティーの評価の算出
+            for cid in leaders[:, COL_PLAYERID]:
+                cr = members[members[:, COL_COMUNITY] == cid, COL_GAME_REWARD]
+                if cr.shape[0] != 0:
+                    leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += np.mean(cr) / np.max([np.var(cr), 1])
+                else:
+                    leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += 0
 
             # 学習
             members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_action(
@@ -243,13 +278,14 @@ def exec_pgg(players, parameter):
             members[:, COL_GAME_REWARD] = 0
 
             if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
-                leaders[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_action(
+                leaders[:, [COL_GAME_REWARD]] /= LEADER_SAMPLING_TERM
+                leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_action(
                     leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
                     leaders[:, COL_GAME_REWARD],
                     leaders[:, COL_ANUM],
                     alpha=parameter['alpha']
                 )
-                leaders[COL_GAME_REWARD] = 0
+                leaders[:, COL_GAME_REWARD] = 0
 
     players[players[:, COL_ROLE] == ROLE_MEMBER, :] = members
     players[players[:, COL_ROLE] == ROLE_LEADER, :] = leaders

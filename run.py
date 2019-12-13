@@ -8,7 +8,7 @@ import os
 import sys
 import copy
 from tqdm import tqdm
-from model_helper import generate_players, exec_pgg, get_players_role, get_gaming_rule, get_rule_gain, learning_role
+from model_helper import generate_players, exec_pgg, get_players_role, learning_role
 from config import *
 from make_batch_file import paramfilename
 from multiprocessing import Pool
@@ -30,7 +30,8 @@ def process(seed, parameter, path):
         # 制裁者と成員の評価値算出
         players[:, [COL_QrLEADER, COL_QrMEMBERS]] = learning_role(
             players[:, [COL_QrLEADER, COL_QrMEMBERS]],
-            players[:, COL_ROLE_REWARD]
+            players[:, COL_ROLE_REWARD],
+            players[:, COL_ROLE]
         )
         
         # プロット用にログ記録

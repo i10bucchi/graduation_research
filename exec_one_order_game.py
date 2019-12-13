@@ -13,11 +13,22 @@ parameter = {
     'epsilon':          0.05,
 }
 
-players = exec_pgg(players, parameter)
-print(players[:, COL_ROLE_REWARD])
-players[:, [COL_QrLEADER, COL_QrMEMBERS]] = learning_role(
-    players[:, [COL_QrLEADER, COL_QrMEMBERS]],
-    players[:, COL_ROLE_REWARD],
-    players[:, COL_ROLE]
-)
-print(players[:, [COL_QrLEADER, COL_QrMEMBERS]])
+# ゲームの実行
+for i in range(MAX_TURN):
+    # 制裁者としてゲームに参加するか成員としてゲームに参加するかの決定
+    if i == 0:
+        players[:, COL_ROLE] = ROLE_MEMBER
+    else:
+        players[:, COL_ROLE] = get_players_role(players[:, [COL_QrLEADER, COL_QrMEMBERS]])
+    print('leaders_num: {}'.format(np.sum(players[:, COL_ROLE] == ROLE_LEADER)))
+    print('members_num: {}'.format(np.sum(players[:, COL_ROLE] == ROLE_MEMBER)))
+
+    # 共同罰あり公共財ゲームの実行
+    players = exec_pgg(players, parameter)
+
+    # 制裁者と成員の評価値算出
+    players[:, [COL_QrLEADER, COL_QrMEMBERS]] = learning_role(
+        players[:, [COL_QrLEADER, COL_QrMEMBERS]],
+        players[:, COL_ROLE_REWARD],
+        players[:, COL_ROLE]
+    )

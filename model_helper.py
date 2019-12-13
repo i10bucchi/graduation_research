@@ -46,6 +46,7 @@ def generate_players():
     players[:, COL_Qap01] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qap10] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qap11] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_COMUNITY_REWARD] = -1
 
     return players
 
@@ -182,7 +183,7 @@ def learning_action(qa, rewards, anum, alpha=0.8):
 
     return qa + ( alpha * error )
 
-def get_newcomunity(comunity_reward, comunity_ids, num_members):
+def get_newcomunity(comunity_reward, comunity_ids, num_members, mu=0.05):
     '''
     abstract:
         どこのコミュニティに加入するかを決定する
@@ -220,79 +221,82 @@ def exec_pgg(players, parameter):
     members = players[players[:, COL_ROLE] == ROLE_MEMBER, :]
     leaders = players[players[:, COL_ROLE] == ROLE_LEADER, :]
 
-    # 最初は等確率に選ばれるようにするため
-    leaders[:, COL_COMUNITY_REWARD] = 1
+    if np.sum(leaders[:, COL_COMUNITY_REWARD] == -1) == leaders.shape[0]:
+        # 初回の情報なしコミュニティの評価値
+        leaders[:, COL_COMUNITY_REWARD] = 1
+    else:
+        # 初回以降の情報なしコミュニティの評価値
+        leaders[leaders[:, COL_COMUNITY_REWARD] == -1, COL_COMUNITY_REWARD] = leaders[leaders[:, COL_COMUNITY_REWARD] != -1, COL_COMUNITY_REWARD].mean()
 
     # ゲーム実行
-    for i in range(20):
+    for i in tqdm(range(MAX_STEP)):
         # コミュニティの模倣(移動)
-        members[:, COL_COMUNITY] = get_newcomunity(leaders[:, COL_COMUNITY_REWARD], leaders[:, COL_PLAYERID], members.shape[0])
-        leaders[:, COL_COMUNITY_REWARD] = 0
-        
-        # コミュニティないで罰ありPGG
-        for i in range(MAX_STEP):
-            # 行動決定
-            if i % LEADER_SAMPLING_TERM == 0:
-                leaders[:, [COL_APC, COL_APS]], leaders[:, COL_ANUM]  = get_action_inpgg(leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
-            members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_action_inpgg(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
-            # 利得算出
-            mrs = get_members_gain(
-                members[:, COL_AC],
-                members[:, COL_AS],
-                members[:, COL_COMUNITY],
-                leaders[:, COL_PLAYERID],
-                leaders[:, COL_APC],
-                leaders[:, COL_APS], 
-                parameter
-            )
-            lrs = get_leaders_gain(
-                members[:, COL_AC],
-                members[:, COL_AS],
-                members[:, COL_COMUNITY],
-                leaders[:, COL_PLAYERID],
-                leaders[:, COL_APC],
-                leaders[:, COL_APS],
-                parameter
-            )
+        if i % COMUNITY_MOVE_TERM == 0:
+            members[:, COL_COMUNITY] = get_newcomunity(leaders[:, COL_COMUNITY_REWARD], leaders[:, COL_PLAYERID], members.shape[0])
+            leaders[:, COL_COMUNITY_REWARD] = 0
 
-            members[:, COL_GAME_REWARD] += mrs
-            leaders[:, COL_GAME_REWARD] += lrs
-            members[:, COL_ROLE_REWARD] += mrs
-            leaders[:, COL_ROLE_REWARD] += lrs
+        # 行動決定
+        if i % LEADER_SAMPLING_TERM == 0:
+            leaders[:, [COL_APC, COL_APS]], leaders[:, COL_ANUM]  = get_action_inpgg(leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
+        members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_action_inpgg(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
+        # 利得算出
+        mrs = get_members_gain(
+            members[:, COL_AC],
+            members[:, COL_AS],
+            members[:, COL_COMUNITY],
+            leaders[:, COL_PLAYERID],
+            leaders[:, COL_APC],
+            leaders[:, COL_APS], 
+            parameter
+        )
+        lrs = get_leaders_gain(
+            members[:, COL_AC],
+            members[:, COL_AS],
+            members[:, COL_COMUNITY],
+            leaders[:, COL_PLAYERID],
+            leaders[:, COL_APC],
+            leaders[:, COL_APS],
+            parameter
+        )
 
-            # コミュニティーの評価の算出
-            for cid in leaders[:, COL_PLAYERID]:
-                cr = members[members[:, COL_COMUNITY] == cid, COL_GAME_REWARD]
-                if cr.shape[0] != 0:
-                    leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += np.mean(cr) / np.max([np.var(cr), 1])
-                else:
-                    leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += 0
+        members[:, COL_GAME_REWARD] += mrs
+        leaders[:, COL_GAME_REWARD] += lrs
+        members[:, COL_ROLE_REWARD] += mrs
+        leaders[:, COL_ROLE_REWARD] += lrs
 
-            # 学習
-            members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_action(
-                members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
-                members[:, COL_GAME_REWARD],
-                members[:, COL_ANUM],
+        # コミュニティーの評価の算出
+        for cid in leaders[:, COL_PLAYERID]:
+            cr = members[members[:, COL_COMUNITY] == cid, COL_GAME_REWARD]
+            if cr.shape[0] != 0:
+                leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += np.mean(cr) / np.max([np.var(cr), 1])
+            else:
+                leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += 0.1
+
+        # 学習
+        members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_action(
+            members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
+            members[:, COL_GAME_REWARD],
+            members[:, COL_ANUM],
+            alpha=parameter['alpha']
+        )
+        members[:, COL_GAME_REWARD] = 0
+
+        if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
+            leaders[:, [COL_GAME_REWARD]] /= LEADER_SAMPLING_TERM
+            leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_action(
+                leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
+                leaders[:, COL_GAME_REWARD],
+                leaders[:, COL_ANUM],
                 alpha=parameter['alpha']
             )
-            members[:, COL_GAME_REWARD] = 0
-
-            if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
-                leaders[:, [COL_GAME_REWARD]] /= LEADER_SAMPLING_TERM
-                leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_action(
-                    leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
-                    leaders[:, COL_GAME_REWARD],
-                    leaders[:, COL_ANUM],
-                    alpha=parameter['alpha']
-                )
-                leaders[:, COL_GAME_REWARD] = 0
+            leaders[:, COL_GAME_REWARD] = 0
 
     players[players[:, COL_ROLE] == ROLE_MEMBER, :] = members
     players[players[:, COL_ROLE] == ROLE_LEADER, :] = leaders
 
     return players
 
-def get_players_role(players_qr, epshilon=0.1):
+def get_players_role(players_qr, epshilon=0.02):
     '''
     abstract:
         epshilon-greedy法により次のゲームでのプレイヤーの役割を決定する
@@ -306,7 +310,7 @@ def get_players_role(players_qr, epshilon=0.1):
 
     players_role = np.argmax(players_qr, axis=1)
     rand = np.random.rand(players_qr.shape[0])
-    players_role[rand < epshilon] = np.random.randint(0, 4, players_qr[rand < epshilon].shape[0])
+    players_role[rand < epshilon] = np.random.randint(0, 2, players_qr[rand < epshilon].shape[0])
 
     return players_role
 
@@ -330,8 +334,8 @@ def learning_role(players_qr, rewards, players_role, alpha=0.8):
 
     # 今回更新するQ値以外のerrorを0にするためのマスク
     mask = np.zeros((NUM_PLAYERS, 2))
-    mask[players_role == ROLE_LEADER, 0] = 1
-    mask[players_role == ROLE_LEADER, 1] = 1
+    mask[players_role == ROLE_LEADER, ROLE_LEADER] = 1
+    mask[players_role == ROLE_MEMBER, ROLE_MEMBER] = 1
 
     # 更新
     error = mask * (np.tile(rewards,(2,1)).T - players_qr)

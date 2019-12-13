@@ -20,7 +20,7 @@ def process(seed, parameter, path):
     players = generate_players()
 
     # ゲームの実行
-    for _ in tqdm(range(500)):
+    for _ in tqdm(range(MAX_TURN)):
         # 制裁者としてゲームに参加するか成員としてゲームに参加するかの決定
         players[:, COL_ROLE] = get_players_role(players[:, [COL_QrLEADER, COL_QrMEMBERS]])
 

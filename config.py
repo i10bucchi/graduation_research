@@ -7,7 +7,9 @@ import yaml
 NUM_PLAYERS = 100
 MAX_REP = 21
 S = 1
-MAX_STEP = 20000
+MAX_TURN = 100
+MAX_STEP = 10000
+COMUNITY_MOVE_TERM = 20
 LEADER_SAMPLING_TERM = 100
 
 # カラム
@@ -56,8 +58,8 @@ ALPHA_LIST = [0.8]
 MULTI = 1
 
 # プログラム用
-ROLE_MEMBER = 0
-ROLE_LEADER = 1
+ROLE_LEADER = 0
+ROLE_MEMBER = 1
 
 def load_parameter(path):
     f = open(path, "r")

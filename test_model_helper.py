@@ -23,7 +23,7 @@ class TestModel(unittest.TestCase):
 
         # ポイント初期化確認
         expected = np.zeros(NUM_PLAYERS)
-        actual = return_values1[:, COL_P]
+        actual = return_values1[:, COL_GAME_REWARD]
         self.assertEquals(np.sum(expected == actual), NUM_PLAYERS)
 
         # ポイントログ初期化確認
@@ -535,7 +535,7 @@ class TestModel(unittest.TestCase):
 
         # argmax_a(Q) = [0,0]
         arg = np.zeros((NUM_PLAYERS, NUM_COLUMN))
-        arg[:, COL_Qr00] = 1
+        arg[:, COL_QrLEADER] = 1
         actual = model_helper.get_players_rule(arg, epshilon=0)
 
         expected = np.zeros(NUM_PLAYERS)
@@ -577,7 +577,7 @@ class TestModel(unittest.TestCase):
     
     def test_learning_rule(self):
         arg1 = np.zeros((NUM_PLAYERS, NUM_COLUMN))
-        arg1[:, COL_RREWARD] = np.ones(NUM_PLAYERS)
+        arg1[:, COL_ROLE_REWARD] = np.ones(NUM_PLAYERS)
         arg2 = 2
         
         actual = model_helper.learning_rule(arg1, arg2, alpha=0.1)

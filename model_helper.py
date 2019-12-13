@@ -36,6 +36,7 @@ def generate_players():
     '''
 
     players = np.zeros((NUM_PLAYERS, NUM_COLUMN))
+    players[:, COL_PLAYERID] = range(NUM_PLAYERS)
     players[:, COL_AC] = -1
     players[:, COL_AS] = -1
     players[:, COL_APC] = -1
@@ -46,10 +47,10 @@ def generate_players():
     players[:, COL_Qa10] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qa11] = np.random.rand(NUM_PLAYERS)
     players[:, COL_RNUM] = -1
-    players[:, COL_Qr00] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_QrLEADER] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qr01] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qr10] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qr11] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_QrMEMBERS] = np.random.rand(NUM_PLAYERS)
     players[:, COL_ROLE] = -1
     players[:, COL_Qap00] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qap01] = np.random.rand(NUM_PLAYERS)
@@ -58,51 +59,27 @@ def generate_players():
 
     return players
 
-def get_members_action(members_qa, parameter):
+def get_action_inpgg(qa, parameter):
     '''
     abstract:
-        epshilon-greedy法により成員の行動を決定する
+        epshilon-greedy法によりプレイヤーの行動を決定する
     input:
-        members_qa:    np.array shape=[NUM_MEMBERS, 4]
+        qa:    np.array shape=[-1, 4]
             全ての成員のQテーブル
         parameter:      dict
             モデルのパラーメター辞書
     output:
-        :               np.array shape=[NUM_MEMBERS, 2]
+        :               np.array shape=[-1, 2]
             全ての成員の行動選択
-        members_action: np.array shape=[NUM_MEMBERS]
+        action: np.array shape=[-1,]
             全ての成員の行動番号
     '''
 
-    members_action = np.argmax(members_qa, axis=1)
-    rand = np.random.rand(members_qa.shape[0])
-    members_action[rand < parameter['epsilon']] = np.random.randint(0, 4, members_action[rand < parameter['epsilon']].shape[0])
+    action = np.argmax(qa, axis=1)
+    rand = np.random.rand(qa.shape[0])
+    action[rand < parameter['epsilon']] = np.random.randint(0, 4, action[rand < parameter['epsilon']].shape[0])
         
-    return np.tile(a_l, (members_action.shape[0], 1))[members_action], members_action
-
-def get_leader_action(leader_qa, parameter):
-    '''
-    abstract:
-        epshilon-greedy法により制裁者の行動を決定する
-    input:
-        leader_qa:    np.array shape=[4]
-            制裁者のQテーブル
-        parameter:      dict
-            モデルのパラーメター辞書
-    output:
-        :               np.array shape=[2]
-            制裁者の行動選択
-        leader_action:  int
-            制裁者の行動番号
-    '''
-    rand = np.random.rand()
-    
-    if rand < parameter['epsilon']:
-        leader_action = np.random.randint(0, 4)
-    else:
-        leader_action = np.argmax(leader_qa)
-
-    return a_l[leader_action], leader_action
+    return np.tile(a_l, (action.shape[0], 1))[action], action
 
 def get_members_gain(members_ac, members_as, leader_apc, leader_aps, parameter, num_members=NUM_MEMBERS):
     '''
@@ -170,73 +147,50 @@ def get_leaders_gain(members_ac, members_as, leader_apc, leader_aps, parameter, 
 
     return tax - pcc - psc + min_r
 
-def learning_members(members_qa, rewards, members_anum, parameter):
+def learning_action(qa, rewards, anum, alpha=0.8):
     '''
     abstract:
         成員の学習を行う
     input:
-        members_qa:     np.array shape=[NUM_MEMBERS, 4]
+        qa:     np.array shape=[-1, 4]
             全ての成員のQテーブル
-        rewards:        np.array shape=[NUM_MEMBERS]
+        rewards:        np.array shape=[-1,]
             全ての成員の利得
-        members_anum:   np.array shape=[NUM_MEMBERS]
+        anum:   np.array shape=[-1,]
             全ての成員の行動番号
     output:
-        :   np.array shape=[NUM_MEMBERS, 4]
+        :   np.array shape=[-1,]
             全ての成員の更新後のQテーブル
     '''
 
     # 今回更新するQ値以外のerrorを0にするためのマスク
-    mask = np.zeros((NUM_MEMBERS, 4))
-    for i, an in enumerate(members_anum):
+    mask = np.zeros_like(qa)
+    for i, an in enumerate(anum):
         mask[i, int(an)] = 1
 
     # 誤差
-    error = mask * (np.tile(rewards,(4,1)).T - members_qa)
+    error = mask * (np.tile(rewards,(4,1)).T - qa)
 
-    return members_qa + ( parameter['alpha'] * error )
+    return qa + ( alpha * error )
 
-def learning_leader(members_reward, leader_qa, leader_anum, reward, parameter, theta):
+def get_newcomunity(members_comunity_reward, members_staying_comunity):
     '''
     abstract:
-        制裁者の学習を行う
+        どこのコミュニティに加入するかを決定する
     input:
-        members_reward:     np.array shape=[NUM_MEMBERS]
-            成員の利得
-        leader_qa:          np.array shape=[4]
-            制裁者のQテーブル
-        leaderanum:         int
-            精細者の行動番号
-        reward:             int
-            制裁者の利得
-        parameter:          dict
-            実験パラメータ
-        theta:              list len=2
-            1次ゲームのルール [成員の利益を考慮するか否か, 行動試行期間の差]
+        members_comunity_reward:    np.array shape=[-1,]
+            自身が現在のコミュニティーで得ることのできた利得
+        members_staying_comunity:   np.array shape=[-1,]
+            各成員が所属しているコミュニティの制裁者のPLAYERID
     output:
-        :   np.array shape=[4]
-            更新後のQテーブル
+        :   np.array shape=[-1,]
+            各成員が次に所属するコミュニティの制裁者のPLAYERID(無所属の場合は-1)
     '''
 
-    # 今回更新するQ値以外のerrorを0にするためのマスク
-    mask = np.zeros(4)
-    mask[int(leader_anum)] = 1
+    
+    
 
-    if theta[0] == 0 and theta[1] == 0:
-        r = reward
-    elif theta[0] == 0 and theta[1] == 1:
-        r = reward / LEADER_SAMPLING_TERM
-    elif theta[0] == 1 and theta[1] == 0:
-        r = ( np.mean(members_reward) * reward )
-    else:
-        r = ( np.mean(members_reward) * reward ) / LEADER_SAMPLING_TERM
-
-    # 誤差
-    error = mask * (np.tile(r, 4) - leader_qa)
-
-    return leader_qa + ( parameter['alpha'] * error )
-
-def one_order_game(players, parameter, theta):
+def exec_pgg(players, parameter):
     '''
     abstract:
         1次ゲームを決められた回数行いゲーム利得を算出する
@@ -254,141 +208,78 @@ def one_order_game(players, parameter, theta):
             (平均協調率, 平均支援率)
     '''
 
-    # 役割決定
-    players[:, COL_ROLE] = ROLE_MEMBER
-    players[np.random.randint(0, NUM_PLAYERS), COL_ROLE] = ROLE_LEADER
     members = players[players[:, COL_ROLE] == ROLE_MEMBER, :]
-    leader = players[players[:, COL_ROLE] == ROLE_LEADER, :][0]
-
-    # 収集対象データ初期化
-    mr_sum = np.zeros(NUM_MEMBERS)
-    lr_sum = 0
-    c_num = np.zeros(NUM_MEMBERS)
-    s_num = np.zeros(NUM_MEMBERS)
+    leaders = players[players[:, COL_ROLE] == ROLE_LEADER, :]
 
     # ゲーム実行
-    step = 0
-    for i in range(MAX_STEP):
-        # 行動決定
-        if theta[1] == 0:
-            leader[[COL_APC, COL_APS]], leader[COL_ANUM] = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
-        else:
+    for i in range(20):
+        # コミュニティの模倣(移動)
+        members[:, COL_COMUNITY] = get_newcomunity(members[:, COL_COMUNITY_REWARD])
+        members[:, COL_COMUNITY_REWARD] = 0
+        
+        # コミュニティないで罰ありPGG
+        for i in range(MAX_STEP):
+            # 行動決定
             if i % LEADER_SAMPLING_TERM == 0:
-                leader[[COL_APC, COL_APS]], leader[COL_ANUM]  = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
-        members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_members_action(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
-        
-        # 利得算出
-        mrs = get_members_gain(members[:, COL_AC], members[:, COL_AS], leader[COL_APC], leader[COL_APS], parameter)
-        lr = get_leaders_gain(members[:, COL_AC], members[:, COL_AS], leader[COL_APC], leader[COL_APS], parameter)
-        members[:, COL_P] += mrs
-        leader[COL_P] += lr
-        
-        step += 1
+                leaders[:, [COL_APC, COL_APS]], leaders[COL_ANUM]  = get_action_inpgg(leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
+            members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_action_inpgg(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
+            
+            # 利得算出
+            mrs = get_members_gain(members[:, COL_AC], members[:, COL_AS], leaders[COL_APC], leaders[COL_APS], parameter)
+            lrs = get_leaders_gain(members[:, COL_AC], members[:, COL_AS], leaders[COL_APC], leaders[COL_APS], parameter)
+            members[:, COL_GAME_REWARD] = mrs
+            leaders[:, COL_GAME_REWARD] = lrs
+            members[:, COL_COMUNITY_REWARD] += mrs
+            members[:, COL_ROLE_REWARD] += mrs
+            leaders[:, COL_ROLE_REWARD] += lrs
 
-        # 収集対象のデータを記録
-        mr_sum += mrs.astype(np.float)
-        lr_sum += lr
-        c_num += members[:, COL_AC].astype(np.float)
-        s_num += members[:, COL_AS].astype(np.float)
-
-        # 学習
-        members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_members(
-            members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
-            members[:, COL_P],
-            members[:, COL_ANUM],
-            parameter
-        )
-        members[:, COL_P_LOG] += members[:, COL_P]
-        members[:, COL_P] = 0
-
-        if theta[1] == 0:
-            leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_leader(
-                members[:, COL_P_LOG], leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
-                leader[COL_ANUM],
-                leader[COL_P],
-                parameter,
-                theta
+            # 学習
+            members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_action(
+                members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
+                members[:, COL_GAME_REWARD],
+                members[:, COL_ANUM],
+                alpha=parameter['alpha']
             )
-            leader[COL_P] = 0
-            members[:, COL_P_LOG] = 0
-        else:
+            members[:, COL_GAME_REWARD] = 0
+
             if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
-                leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_leader(
-                    members[:, COL_P_LOG], leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
-                    leader[COL_ANUM],
-                    leader[COL_P],
-                    parameter,
-                    theta
+                leaders[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_action(
+                    leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
+                    leaders[:, COL_GAME_REWARD],
+                    leaders[:, COL_ANUM],
+                    alpha=parameter['alpha']
                 )
-                leader[COL_P] = 0
-                members[:, COL_P_LOG] = 0
-    
-    # ゲームの利得を算出
-    members[:, COL_RREWARD] = mr_sum / MAX_STEP
-    leader[COL_RREWARD] = lr_sum / MAX_STEP
+                leaders[COL_GAME_REWARD] = 0
 
     players[players[:, COL_ROLE] == ROLE_MEMBER, :] = members
-    players[players[:, COL_ROLE] == ROLE_LEADER, :] = leader
+    players[players[:, COL_ROLE] == ROLE_LEADER, :] = leaders
 
-    return players, ( c_num.sum() / NUM_MEMBERS / MAX_STEP, s_num.sum() / NUM_MEMBERS / MAX_STEP )
+    return players
 
-def get_players_rule(players, epshilon=0.9):
+def get_players_role(players_qr, epshilon=0.1):
     '''
     abstract:
-        epshilon-greedy法によりプレイヤーの支持するゲームルールを決定する
+        epshilon-greedy法により次のゲームでのプレイヤーの役割を決定する
     input:
-        players:    np.array shape=[NUM_PLAYERS, NUM_COLUMN]
+        players:    np.array shape=[NUM_PLAYERS, 2(COL_QrLEADER, COL_QrMEMBERS)]
             全てのグループの成員固体
     output:
         players_rule:   np.array shape=[NUM_PLAYERS]
             各プレイヤーが選択したゲームルール配列
     '''
 
-    players_rule = np.argmax(players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]], axis=1)
-    rand = np.random.rand(players.shape[0])
-    players_rule[rand < epshilon] = np.random.randint(0, 4, players_rule[rand < epshilon].shape[0])
+    players_role = np.argmax(players_qr, axis=1)
+    rand = np.random.rand(players_qr.shape[0])
+    players_role[rand < epshilon] = np.random.randint(0, 4, players_qr[rand < epshilon].shape[0])
 
-    return players_rule
+    return players_role
 
-def get_gaming_rule(players):
-    '''
-    abstract:
-        各プレイヤーが支持するルールで多数決を行う
-    input:
-        players:    np.array shape=[NUM_PLAYERS, NUM_COLUMN]
-            全てのグループの成員固体
-    output:
-        :    int
-            多数決で決まったルールの番号(最大表が2つ以上あった場合は-1を返す)
-    '''
-
-    rule_hyonum = np.bincount(players[:, COL_RNUM].astype(np.int64))
-    max_rule = np.argmax(rule_hyonum)
-
-    if np.sum(rule_hyonum[max_rule] == rule_hyonum) == 1:
-        return max_rule
-    else:
-        return -1
-
-def get_rule_gain(players):
-    '''
-    abstract:
-        Qaの最大値を評価とする
-    input:
-        players:    np.array shape=[NUM_PLAYERS, NUM_COLUMN]
-            全てのグループの成員固体
-    output:
-        :    np.array shape=[NUM_PLAYERS]
-            多数決で決まったルールの番号(最大表が2つ以上あった場合は-1を返す)
-    '''
-    return np.max(players[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], axis=1)
-
-def learning_rule(players_qr, rewards, rule_number, alpha=0.8):
+def learning_role(players_qr, rewards, players_role, alpha=0.8):
     '''
     abstract:
         ゲームルールの学習を行う
     input:
-        players_qr:    np.array shape=[NUM_PLAYERS, 4]
+        players_qr:    np.array shape=[NUM_PLAYERS, 2]
             プレイヤーのルールQテーブル
         rewards:
             ルールの報酬
@@ -397,15 +288,16 @@ def learning_rule(players_qr, rewards, rule_number, alpha=0.8):
         alpha:          float
             学習率
     output:
-        :    np.array shape=[NUM_PLAYERS, 4]
+        :    np.array shape=[NUM_PLAYERS, 2]
             更新したQ値
     '''
 
     # 今回更新するQ値以外のerrorを0にするためのマスク
-    mask = np.zeros((NUM_PLAYERS, 4))
-    mask[:, rule_number] = 1
+    mask = np.zeros((NUM_PLAYERS, 2))
+    mask[players_role == ROLE_LEADER, 0] = 1
+    mask[players_role == ROLE_LEADER, 1] = 1
 
     # 更新
-    error = mask * (np.tile(rewards,(4,1)).T - players_qr)
+    error = mask * (np.tile(rewards,(2,1)).T - players_qr)
 
     return players_qr + ( alpha * error )

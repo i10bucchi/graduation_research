@@ -46,7 +46,7 @@ def generate_players():
     players[:, COL_Qap01] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qap10] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qap11] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_COMUNITY_REWARD] = np.nan
+    players[:, COL_COMUNITY_REWARD] = 0
 
     return players
 
@@ -66,10 +66,10 @@ def get_action_inpgg(qa, epsilon=0.02):
             全ての成員の行動番号
     '''
 
-    action = np.argmax(qa, axis=1)
+    action = qa.argmax(axis=1)
     rand = np.random.rand(qa.shape[0])
-    action[rand < epsilon] = np.random.randint(0, 4, action[rand < epsilon].shape[0])
-        
+    action[rand < epsilon] = np.random.choice(range(4), size=(rand < epsilon).sum())
+    
     return np.tile(a_l, (action.shape[0], 1))[action], action
 
 def get_members_gain(members_ac, members_as, members_cid, leaders_cid, leaders_apc, leaders_aps, parameter):
@@ -97,25 +97,23 @@ def get_members_gain(members_ac, members_as, members_cid, leaders_cid, leaders_a
     '''
 
     comunities = np.unique(members_cid)
-    r = np.zeros(members_ac.shape[0]).astype(np.float64)
+    r_income = parameter['cost_cooperate'] + parameter['cost_support']
+    r = np.full(members_ac.shape[0], r_income).astype(np.float64)
     for cid in comunities:
         num_members = np.sum(members_cid == cid)
-        if num_members == 1:
-            r[members_cid == cid] = parameter['cost_cooperate'] * parameter['power_social'] / 2.0
-        elif num_members > 1:
+        if num_members > 1:
             # 社会的ジレンマ下での成員の得点計算
             d = (parameter['cost_cooperate'] * np.sum(members_ac[members_cid == cid]) * parameter['power_social']) / (num_members)
-            # 非協力の場合はparameter['cost_cooperate']がもらえる
-            cp = (parameter['cost_cooperate'] * (np.ones(num_members) - members_ac[members_cid == cid]))
-            # 非支援の場合はparameter['cost_support']がもらえる
-            sp = (parameter['cost_support'] * (np.ones(num_members) - members_as[members_cid == cid]))
+            # 協力の場合はparameter['cost_cooperate']が引かれる
+            cp = parameter['cost_cooperate'] * members_ac[members_cid == cid]
+            # 支援の場合はparameter['cost_support']が引かれる
+            sp = parameter['cost_support'] * members_as[members_cid == cid]
             # 非協力の場合に制裁者が罰を行使してたら罰される
             pcp = (parameter['punish_size'] * leaders_apc[leaders_cid == cid] * (np.ones(num_members) - members_ac[members_cid == cid]))
             # 非支援の場合に制裁者が罰を行使してたら罰される
             psp = (parameter['punish_size'] * leaders_aps[leaders_cid == cid] * (np.ones(num_members) - members_as[members_cid == cid]))
-            r[members_cid == cid] = d + cp + sp - pcp - psp
-        else:
-            pass
+            r[members_cid == cid] += (d - cp - sp - pcp - psp)
+    
     return r
 
 def get_leaders_gain(members_ac, members_as, members_cid, leaders_id, leaders_apc, leaders_aps, parameter):
@@ -175,23 +173,25 @@ def learning_action(qa, rewards, anum, alpha=0.8):
 
     # 今回更新するQ値以外のerrorを0にするためのマスク
     mask = np.zeros_like(qa)
-    for i, an in enumerate(anum):
-        mask[i, int(an)] = 1
+    for i in range(4):
+        mask[anum == i, i] = 1
+    # for i, an in enumerate(anum):
+    #     mask[i, int(an)] = 1
 
     # 誤差
     error = mask * (np.tile(rewards,(4,1)).T - qa)
 
     return qa + ( alpha * error )
 
-def get_newcomunity(comunity_reward, comunity_ids, num_members, mu=0.05):
+def get_newcomunity(comunity_reward, comunity_ids, num_members, mu=0.03):
     '''
     abstract:
         どこのコミュニティに加入するかを決定する
     input:
         comunity_reward:    np.array shape=[-1,]
-            自身が現在のコミュニティーで得ることのできた利得
+            各コミュニティー内で成員が得ることのできた利得
         comunity_ids:       np.array shape=[-1,]
-            各成員が所属しているコミュニティの制裁者のPLAYERID
+            各コミュニティの制裁者のPLAYERID
         num_members:        int
             成員の人数
         mu:                 float
@@ -200,9 +200,22 @@ def get_newcomunity(comunity_reward, comunity_ids, num_members, mu=0.05):
         :   np.array shape=[-1,]
             各成員が次に所属するコミュニティの制裁者のPLAYERID(無所属の場合は-1)
     '''
+    cr = comunity_reward / COMUNITY_MOVE_TERM
+    if np.sum(cr < 0) > 0:
+        cr += -1 * cr.min() + 1
+    
+    cr = np.power(cr, 4)
+    prob = cr / cr.sum()
+    next_comunity = np.random.choice(comunity_ids, size=num_members, p=prob)
+    rand = np.random.rand(num_members)
+    next_comunity[rand < mu] = np.random.choice(comunity_ids, size=(rand < mu).sum())
+    return next_comunity
 
-    prob = comunity_reward / comunity_reward.sum()
-    return np.random.choice(comunity_ids, size=num_members, p=prob)
+    # next_comunity = np.zeros(num_members)
+    # next_comunity[:] = comunity_ids[np.argmax(comunity_reward)]
+    # rand = np.random.rand(num_members)
+    # next_comunity[rand < mu] = np.random.choice(comunity_ids, size=(rand < mu).sum())
+    # return next_comunity
 
 def exec_pgg(players, parameter):
     '''
@@ -225,19 +238,21 @@ def exec_pgg(players, parameter):
     members = players[players[:, COL_ROLE] == ROLE_MEMBER, :]
     leaders = players[players[:, COL_ROLE] == ROLE_LEADER, :]
 
-    qa_histry = np.zeros((MAX_STEP, 4))
-    qap_histry = np.zeros((MAX_STEP, 4))
-    # comu_n_histry = np.zeros((MAX_STEP), leaders.shape[0])
-    # comu_r_histry = np.zeros((MAX_STEP), leaders.shape[0])
+    # qa_histry = np.zeros((MAX_STEP, 4))
+    # qap_histry = np.zeros((MAX_STEP, 4))
+    # comu_n_histry = np.zeros((int(MAX_STEP/COMUNITY_MOVE_TERM), NUM_PLAYERS))
+    # comu_r_histry = np.zeros((int(MAX_STEP/COMUNITY_MOVE_TERM), NUM_PLAYERS))
 
     if np.sum(np.isnan(leaders[:, COL_COMUNITY_REWARD])) > 0:
         # 情報なしコミュニティの評価値
         leaders[np.isnan(leaders[:, COL_COMUNITY_REWARD]), COL_COMUNITY_REWARD] = leaders[~np.isnan(leaders[:, COL_COMUNITY_REWARD]), COL_COMUNITY_REWARD].mean()
 
     # ゲーム実行
-    for i in tqdm(range(MAX_STEP)):
+    for i in range(MAX_STEP):
         # コミュニティの模倣(移動)
         if i % COMUNITY_MOVE_TERM == 0:
+            # comu_n_histry[int(i/COMUNITY_MOVE_TERM), :] = np.bincount(members[:, COL_COMUNITY].astype(np.int64), minlength=NUM_PLAYERS)
+            # comu_r_histry[int(i/COMUNITY_MOVE_TERM), [0, 1, 2]] = leaders[:, COL_COMUNITY_REWARD] / COMUNITY_MOVE_TERM
             members[:, COL_COMUNITY] = get_newcomunity(leaders[:, COL_COMUNITY_REWARD], leaders[:, COL_PLAYERID], members.shape[0], mu=parameter['epsilon'])
             leaders[:, COL_COMUNITY_REWARD] = 0
 
@@ -276,13 +291,14 @@ def exec_pgg(players, parameter):
         for cid in leaders[:, COL_PLAYERID]:
             cr = members[members[:, COL_COMUNITY] == cid, COL_GAME_REWARD]
             if cr.shape[0] != 0:
-                leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += np.mean(cr) / np.max([np.var(cr), 1])
+                leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += np.mean(cr)
             else:
                 leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += 0.1
 
+        # データ記録
+        # qa_histry[i, :] = members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]].mean(axis=0)
+        # qap_histry[i, :] = leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]].mean(axis=0)
         # 学習
-        qa_histry[i, :] = members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]].mean(axis=0)
-        qap_histry[i, :] = leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]].mean(axis=0)
         members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_action(
             members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
             members[:, COL_GAME_REWARD],
@@ -304,7 +320,8 @@ def exec_pgg(players, parameter):
     players[players[:, COL_ROLE] == ROLE_MEMBER, :] = members
     players[players[:, COL_ROLE] == ROLE_LEADER, :] = leaders
 
-    return players, qa_histry, qap_histry
+    # return players, qa_histry, qap_histry, comu_n_histry, comu_r_histry
+    return players
 
 def get_players_role(players_qr, epsilon=0.02):
     '''
@@ -320,9 +337,9 @@ def get_players_role(players_qr, epsilon=0.02):
             各プレイヤーが選択したゲームルール配列
     '''
 
-    players_role = np.argmax(players_qr, axis=1)
+    players_role = players_qr.argmax(axis=1)
     rand = np.random.rand(players_qr.shape[0])
-    players_role[rand < epsilon] = np.random.randint(0, 2, players_qr[rand < epsilon].shape[0])
+    players_role[rand < epsilon] = np.random.choice([ROLE_LEADER, ROLE_MEMBER], size=(rand < epsilon).sum())
 
     return players_role
 

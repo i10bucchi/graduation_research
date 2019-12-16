@@ -19,18 +19,23 @@ def process(seed, parameter, path):
     # エージェントの生成
     players = generate_players()
 
+    qa_hist = np.zeros((MAX_TURN, 4))
+    qap_hist = np.zeros((MAX_TURN, 4))
+    cn_hist = np.zeros((MAX_TURN, NUM_PLAYERS))
+    cr_hist = np.zeros((MAX_TURN, NUM_PLAYERS))
+    role_hist = np.zeros((MAX_TURN, NUM_PLAYERS))
     # ゲームの実行
     for i in tqdm(range(MAX_TURN)):
         # 制裁者としてゲームに参加するか成員としてゲームに参加するかの決定
         if i == 0:
             players[:, COL_ROLE] = ROLE_MEMBER
-            players[0, COL_COMUNITY_REWARD] = 1
+            players[range(30), COL_COMUNITY_REWARD] = 1
         else:
-            players[:, COL_ROLE] = get_players_role(players[:, [COL_QrLEADER, COL_QrMEMBERS]], epsilon=0.05)
-        players[0, COL_ROLE] = ROLE_LEADER
+            players[:, COL_ROLE] = get_players_role(players[:, [COL_QrLEADER, COL_QrMEMBERS]])
+        players[range(30), COL_ROLE] = ROLE_LEADER
 
         # 共同罰あり公共財ゲームの実行
-        players = exec_pgg(players, parameter)
+        players  = exec_pgg(players, parameter)
 
         # 制裁者と成員の評価値算出
         players[:, [COL_QrLEADER, COL_QrMEMBERS]] = learning_role(
@@ -40,19 +45,18 @@ def process(seed, parameter, path):
         )
         
         # プロット用にログ記録
-        # players_qr = players[:, [COL_QrLEADER, COL_Qr01, COL_Qr10, COL_QrMEMBERS]]
-        # q_m_l.append(np.mean(players_qr[players[:, COL_ROLE] == ROLE_MEMBER, :], axis=0))
-        # q_l_l.append(players_qr[players[:, COL_ROLE] == ROLE_LEADER, :][0])
-        # m_r_l.append([players[players[:, COL_ROLE] == ROLE_MEMBER, COL_ROLE_REWARD].mean(), agreed_rule_number])
-        # l_r_l.append([players[players[:, COL_ROLE] == ROLE_LEADER, COL_ROLE_REWARD][0], agreed_rule_number])
-        # action_rate_l.append(action_rate)
+        qa_hist[i, :] = players[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]].mean(axis=0)
+        qap_hist[i, :] = players[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]].mean(axis=0)
+        cn_hist[i, :] = np.bincount(players[:, COL_COMUNITY].astype(np.int64), minlength=NUM_PLAYERS)
+        cr_hist[i, :] = players[:, COL_COMUNITY_REWARD] / COMUNITY_MOVE_TERM
+        role_hist[i, :] = players[:, COL_ROLE]
     
     # 結果の保存
-    # pd.DataFrame(q_m_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrm_seed={seed}.csv'.format(seed=seed))
-    # pd.DataFrame(q_l_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrl_seed={seed}.csv'.format(seed=seed))
-    # pd.DataFrame(m_r_l, columns=['reward', 'rule_number']).to_csv(path + 'csv/member_reward_seed={seed}.csv'.format(seed=seed))
-    # pd.DataFrame(l_r_l, columns=['reward', 'rule_number']).to_csv(path + 'csv/leader_reward_seed={seed}.csv'.format(seed=seed))
-    # pd.DataFrame(action_rate_l, columns=['cooperation_rate', 'supporting_rate']).to_csv(path + 'csv/players_action_rate_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(qa_hist, columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11']).to_csv(path + 'csv/players_qa_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(qap_hist, columns=['Qap_00', 'Qap_01', 'Qap_10', 'Qap_11']).to_csv(path + 'csv/players_qap_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(cn_hist, columns=range(NUM_PLAYERS)).to_csv(path + 'csv/comunity_population_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(cr_hist, columns=range(NUM_PLAYERS)).to_csv(path + 'csv/comunity_reward_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(role_hist, columns=range(NUM_PLAYERS)).to_csv(path + 'csv/role_seed={seed}.csv'.format(seed=seed))
 
 # 引数を複数取るために必要
 # https://qiita.com/kojpk/items/2919362de582a7d8de9e

@@ -29,16 +29,18 @@ def process(seed, leaders_points):
     players[leaders_points, COL_ROLE] = ROLE_LEADER
 
     # 共同罰あり公共財ゲームの実行
-    players, qa_hist, qap_hist = exec_pgg(players, parameter)
+    players, qa_hist, qap_hist, cn_hist, cr_hist = exec_pgg(players, parameter)
 
     pd.DataFrame(qa_hist, columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11']).to_csv('result_pgg/members_qa_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(qap_hist, columns=['Qap_00', 'Qap_01', 'Qap_10', 'Qap_11']).to_csv('result_pgg/leaders_qap_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(cn_hist, columns=range(NUM_PLAYERS)).to_csv('result_pgg/comunity_size_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(cr_hist, columns=range(NUM_PLAYERS)).to_csv('result_pgg/comunity_reward_seed={seed}.csv'.format(seed=seed))
 
 def wrapper(arg):
     process(*arg)
 
 def main():
-    arg = [(i, [0, 1, 2]) for i in range(S, MAX_REP)]
+    arg = [(i, [0,1,2]) for i in range(S, MAX_REP)]
     with Pool(MULTI) as p:
         p.map_async(wrapper, arg).get(9999999)
 

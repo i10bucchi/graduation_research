@@ -29,10 +29,10 @@ def process(seed, parameter, path):
         # 制裁者としてゲームに参加するか成員としてゲームに参加するかの決定
         if i == 0:
             players[:, COL_ROLE] = ROLE_MEMBER
-            players[range(30), COL_COMUNITY_REWARD] = 1
+            players[0, COL_COMUNITY_REWARD] = 1
         else:
             players[:, COL_ROLE] = get_players_role(players[:, [COL_QrLEADER, COL_QrMEMBERS]])
-        players[range(30), COL_ROLE] = ROLE_LEADER
+        players[0, COL_ROLE] = ROLE_LEADER
 
         # 共同罰あり公共財ゲームの実行
         players  = exec_pgg(players, parameter)

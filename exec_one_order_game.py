@@ -1,34 +1,46 @@
+import numpy as np
+import pandas as pd
 from model_helper import *
 from config import *
+from multiprocessing import Pool
 
-players = generate_players()
-players[:, COL_ROLE] = get_players_role(players[:, [COL_QrLEADER, COL_QrMEMBERS]])
-parameter = {
-    'cost_cooperate':   4,
-    'cost_support':     2,
-    'cost_punish':      2,
-    'power_social':     4,
-    'punish_size':      8,
-    'alpha':            0.8,
-    'epsilon':          0.05,
-}
+np.set_printoptions(formatter={'float': '{: 0.1f}'.format})
 
-# ゲームの実行
-for i in range(MAX_TURN):
+def process(seed, leaders_points):
+    np.random.seed(seed=seed)
+
+    players = generate_players()
+    players[:, COL_ROLE] = get_players_role(players[:, [COL_QrLEADER, COL_QrMEMBERS]])
+    parameter = {
+        'cost_cooperate':   4,
+        'cost_support':     2,
+        'cost_punish':      2,
+        'power_social':     4,
+        'punish_size':      8,
+        'alpha':            0.8,
+        'epsilon':          0.05,
+    }
+
+
     # 制裁者としてゲームに参加するか成員としてゲームに参加するかの決定
-    if i == 0:
-        players[:, COL_ROLE] = ROLE_MEMBER
-    else:
-        players[:, COL_ROLE] = get_players_role(players[:, [COL_QrLEADER, COL_QrMEMBERS]])
-    print('leaders_num: {}'.format(np.sum(players[:, COL_ROLE] == ROLE_LEADER)))
-    print('members_num: {}'.format(np.sum(players[:, COL_ROLE] == ROLE_MEMBER)))
+    players[:, COL_ROLE] = ROLE_MEMBER
+    players[leaders_points, COL_COMUNITY_REWARD] = 1
+
+    players[leaders_points, COL_ROLE] = ROLE_LEADER
 
     # 共同罰あり公共財ゲームの実行
-    players = exec_pgg(players, parameter)
+    players, qa_hist, qap_hist = exec_pgg(players, parameter)
 
-    # 制裁者と成員の評価値算出
-    players[:, [COL_QrLEADER, COL_QrMEMBERS]] = learning_role(
-        players[:, [COL_QrLEADER, COL_QrMEMBERS]],
-        players[:, COL_ROLE_REWARD],
-        players[:, COL_ROLE]
-    )
+    pd.DataFrame(qa_hist, columns=['Qa_00', 'Qa_01', 'Qa_10', 'Qa_11']).to_csv('result_pgg/members_qa_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(qap_hist, columns=['Qap_00', 'Qap_01', 'Qap_10', 'Qap_11']).to_csv('result_pgg/leaders_qap_seed={seed}.csv'.format(seed=seed))
+
+def wrapper(arg):
+    process(*arg)
+
+def main():
+    arg = [(i, [0, 1, 2]) for i in range(S, MAX_REP)]
+    with Pool(MULTI) as p:
+        p.map_async(wrapper, arg).get(9999999)
+
+if __name__== "__main__":
+    main()

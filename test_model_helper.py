@@ -536,7 +536,7 @@ class TestModel(unittest.TestCase):
         # argmax_a(Q) = [0,0]
         arg = np.zeros((NUM_PLAYERS, NUM_COLUMN))
         arg[:, COL_QrLEADER] = 1
-        actual = model_helper.get_players_rule(arg, epshilon=0)
+        actual = model_helper.get_players_rule(arg, epsilon=0)
 
         expected = np.zeros(NUM_PLAYERS)
         self.assertEquals(np.sum(expected == actual), NUM_PLAYERS)
@@ -544,7 +544,7 @@ class TestModel(unittest.TestCase):
         # argmax_a(Q) = [0,1]
         arg = np.zeros((NUM_PLAYERS, NUM_COLUMN))
         arg[:, COL_Qr01] = 1
-        actual = model_helper.get_players_rule(arg, epshilon=0)
+        actual = model_helper.get_players_rule(arg, epsilon=0)
 
         expected = np.ones(NUM_PLAYERS)
         self.assertEquals(np.sum(expected == actual), NUM_PLAYERS)

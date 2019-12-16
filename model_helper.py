@@ -30,35 +30,35 @@ def generate_players():
 
     players = np.zeros((NUM_PLAYERS, NUM_COLUMN))
     players[:, COL_PLAYERID] = range(NUM_PLAYERS)
-    players[:, COL_AC] = -1
-    players[:, COL_AS] = -1
-    players[:, COL_APC] = -1
-    players[:, COL_APS] = -1
-    players[:, COL_ANUM] = -1
+    players[:, COL_AC] = np.nan
+    players[:, COL_AS] = np.nan
+    players[:, COL_APC] = np.nan
+    players[:, COL_APS] = np.nan
+    players[:, COL_ANUM] = np.nan
     players[:, COL_Qa00] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qa01] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qa10] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qa11] = np.random.rand(NUM_PLAYERS)
     players[:, COL_QrLEADER] = np.random.rand(NUM_PLAYERS)
     players[:, COL_QrMEMBERS] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_ROLE] = -1
+    players[:, COL_ROLE] = np.nan
     players[:, COL_Qap00] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qap01] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qap10] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qap11] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_COMUNITY_REWARD] = -1
+    players[:, COL_COMUNITY_REWARD] = np.nan
 
     return players
 
-def get_action_inpgg(qa, parameter):
+def get_action_inpgg(qa, epsilon=0.02):
     '''
     abstract:
-        epshilon-greedy法によりプレイヤーの行動を決定する
+        epsilon-greedy法によりプレイヤーの行動を決定する
     input:
-        qa:    np.array shape=[-1, 4]
+        qa:         np.array shape=[-1, 4]
             全ての成員のQテーブル
-        parameter:      dict
-            モデルのパラーメター辞書
+        epsilon:   float
+            探索的行動をとる確率. default=0.02
     output:
         :               np.array shape=[-1, 2]
             全ての成員の行動選択
@@ -68,7 +68,7 @@ def get_action_inpgg(qa, parameter):
 
     action = np.argmax(qa, axis=1)
     rand = np.random.rand(qa.shape[0])
-    action[rand < parameter['epsilon']] = np.random.randint(0, 4, action[rand < parameter['epsilon']].shape[0])
+    action[rand < epsilon] = np.random.randint(0, 4, action[rand < epsilon].shape[0])
         
     return np.tile(a_l, (action.shape[0], 1))[action], action
 
@@ -190,8 +190,12 @@ def get_newcomunity(comunity_reward, comunity_ids, num_members, mu=0.05):
     input:
         comunity_reward:    np.array shape=[-1,]
             自身が現在のコミュニティーで得ることのできた利得
-        comunity_ids:   np.array shape=[-1,]
+        comunity_ids:       np.array shape=[-1,]
             各成員が所属しているコミュニティの制裁者のPLAYERID
+        num_members:        int
+            成員の人数
+        mu:                 float
+            探索的行動をとる確率. default=0.05
     output:
         :   np.array shape=[-1,]
             各成員が次に所属するコミュニティの制裁者のPLAYERID(無所属の場合は-1)
@@ -221,24 +225,28 @@ def exec_pgg(players, parameter):
     members = players[players[:, COL_ROLE] == ROLE_MEMBER, :]
     leaders = players[players[:, COL_ROLE] == ROLE_LEADER, :]
 
-    if np.sum(leaders[:, COL_COMUNITY_REWARD] == -1) == leaders.shape[0]:
-        # 初回の情報なしコミュニティの評価値
-        leaders[:, COL_COMUNITY_REWARD] = 1
-    else:
-        # 初回以降の情報なしコミュニティの評価値
-        leaders[leaders[:, COL_COMUNITY_REWARD] == -1, COL_COMUNITY_REWARD] = leaders[leaders[:, COL_COMUNITY_REWARD] != -1, COL_COMUNITY_REWARD].mean()
+    qa_histry = np.zeros((MAX_STEP, 4))
+    qap_histry = np.zeros((MAX_STEP, 4))
+    # comu_n_histry = np.zeros((MAX_STEP), leaders.shape[0])
+    # comu_r_histry = np.zeros((MAX_STEP), leaders.shape[0])
+
+    if np.sum(np.isnan(leaders[:, COL_COMUNITY_REWARD])) > 0:
+        # 情報なしコミュニティの評価値
+        leaders[np.isnan(leaders[:, COL_COMUNITY_REWARD]), COL_COMUNITY_REWARD] = leaders[~np.isnan(leaders[:, COL_COMUNITY_REWARD]), COL_COMUNITY_REWARD].mean()
 
     # ゲーム実行
     for i in tqdm(range(MAX_STEP)):
         # コミュニティの模倣(移動)
         if i % COMUNITY_MOVE_TERM == 0:
-            members[:, COL_COMUNITY] = get_newcomunity(leaders[:, COL_COMUNITY_REWARD], leaders[:, COL_PLAYERID], members.shape[0])
+            members[:, COL_COMUNITY] = get_newcomunity(leaders[:, COL_COMUNITY_REWARD], leaders[:, COL_PLAYERID], members.shape[0], mu=parameter['epsilon'])
             leaders[:, COL_COMUNITY_REWARD] = 0
 
         # 行動決定
         if i % LEADER_SAMPLING_TERM == 0:
-            leaders[:, [COL_APC, COL_APS]], leaders[:, COL_ANUM]  = get_action_inpgg(leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
-        members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_action_inpgg(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
+            leaders[:, [COL_APC, COL_APS]], leaders[:, COL_ANUM]  = get_action_inpgg(leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], epsilon=parameter['epsilon'])
+            leaders[0, [COL_APC, COL_APS]] = 0
+            leaders[0, COL_ANUM] = 0
+        members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_action_inpgg(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], epsilon=parameter['epsilon'])
         # 利得算出
         mrs = get_members_gain(
             members[:, COL_AC],
@@ -273,6 +281,8 @@ def exec_pgg(players, parameter):
                 leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += 0.1
 
         # 学習
+        qa_histry[i, :] = members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]].mean(axis=0)
+        qap_histry[i, :] = leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]].mean(axis=0)
         members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_action(
             members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
             members[:, COL_GAME_REWARD],
@@ -294,15 +304,17 @@ def exec_pgg(players, parameter):
     players[players[:, COL_ROLE] == ROLE_MEMBER, :] = members
     players[players[:, COL_ROLE] == ROLE_LEADER, :] = leaders
 
-    return players
+    return players, qa_histry, qap_histry
 
-def get_players_role(players_qr, epshilon=0.02):
+def get_players_role(players_qr, epsilon=0.02):
     '''
     abstract:
-        epshilon-greedy法により次のゲームでのプレイヤーの役割を決定する
+        epsilon-greedy法により次のゲームでのプレイヤーの役割を決定する
     input:
-        players:    np.array shape=[NUM_PLAYERS, 2(COL_QrLEADER, COL_QrMEMBERS)]
+        players_qr:    np.array shape=[NUM_PLAYERS, 2(COL_QrLEADER, COL_QrMEMBERS)]
             全てのグループの成員固体
+        epsilon:       float
+            探索的行動をとる確率. default=0.02
     output:
         players_rule:   np.array shape=[NUM_PLAYERS]
             各プレイヤーが選択したゲームルール配列
@@ -310,7 +322,7 @@ def get_players_role(players_qr, epshilon=0.02):
 
     players_role = np.argmax(players_qr, axis=1)
     rand = np.random.rand(players_qr.shape[0])
-    players_role[rand < epshilon] = np.random.randint(0, 2, players_qr[rand < epshilon].shape[0])
+    players_role[rand < epsilon] = np.random.randint(0, 2, players_qr[rand < epsilon].shape[0])
 
     return players_role
 

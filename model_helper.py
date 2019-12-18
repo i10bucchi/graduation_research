@@ -83,8 +83,8 @@ def get_members_gain(members_ac, members_as, members_cid, leaders_cid, leaders_a
             成員の支援の選択の有無
         members_cid:   np.array shape=[-1,]
             成員が所属しているコミュニティの制裁者のPLAYERID
-        leaders_cid:   np.array shape=[-1,]
-            制裁者のPLAYERID
+        leaders_id:    np.array shape=[-1,]
+            制裁者の自身のPLAYERID
         leaders_apc:   np.array shape=[-1,]
             制裁者の非協調者制裁の選択の有無
         leaders_aps:   np.array shape=[-1,]
@@ -96,54 +96,29 @@ def get_members_gain(members_ac, members_as, members_cid, leaders_cid, leaders_a
             全ての成員の利得
     '''
 
-    # int: 毎ステップの微小な収入
+    comunities = np.unique(members_cid)
     r_income = parameter['cost_cooperate'] + parameter['cost_support']
-
-    # unique_comunity_id:
-    #   np.array shape=[制裁者数(0人のコミュニティを含めない)]: コミュニティID(制裁者のプレイヤーID)
-    # num_comunity_members:
-    #   np.array shape=[制裁者数(0人のコミュニティを含めない)]: 各コミュニティ内の成員の所属人数
-    unique_comunity_id, comunity_size = np.unique(members_cid, return_counts=True)
-
-    # np.array shpae=[成員数]: ユニークなコミュニティID集合をソートした時のインデックス番号
-    members_cindex = np.vectorize(lambda x: np.where(unique_comunity_id == x)[0][0])(members_cid)
-
-    # np.array shape=[成員数, 制裁者数(0人のコミュニティを含めない)]: 成員がどのコミュニティに属しているかのone_hotベクトル
-    comunity_mask = np.eye(len(unique_comunity_id))[members_cindex]
-
-    # np.array shape=[制裁者数(0人のコミュニティを含めない)]: 各コミュニティ内で協調を選択した人数
-    comunity_cooperation = np.dot(members_ac, comunity_mask)
+    r = np.full(members_ac.shape[0], r_income).astype(np.float64)
+    for cid in comunities:
+        num_members = np.sum(members_cid == cid)
+        if num_members > 1:
+            # 社会的ジレンマ下での成員の得点計算
+            d = (parameter['cost_cooperate'] * np.sum(members_ac[members_cid == cid]) * parameter['power_social']) / (num_members)
+            # 協力の場合はparameter['cost_cooperate']が引かれる
+            cp = parameter['cost_cooperate'] * members_ac[members_cid == cid]
+            # 支援の場合はparameter['cost_support']が引かれる
+            sp = parameter['cost_support'] * members_as[members_cid == cid]
+            # 非協力の場合に制裁者が罰を行使してたら罰される
+            pcp = (parameter['punish_size'] * leaders_apc[leaders_cid == cid] * (np.ones(num_members) - members_ac[members_cid == cid]))
+            # 非支援の場合に制裁者が罰を行使してたら罰される
+            psp = (parameter['punish_size'] * leaders_aps[leaders_cid == cid] * (np.ones(num_members) - members_as[members_cid == cid]))
+            r[members_cid == cid] += (d - cp - sp - pcp - psp)
     
-    # 公共財ゲームでの各コミュニティーにおける分配得点計算
-    d_comunity = parameter['cost_cooperate'] * comunity_cooperation * parameter['power_social'] / comunity_size
-    # 公共財ゲームで1人1人が分配される額を算出
-    d = np.dot(comunity_mask, d_comunity)
-    
-    # 協力の場合はparameter['cost_cooperate']が引かれる
-    cp = parameter['cost_cooperate'] * members_ac
-    
-    # 支援の場合はparameter['cost_support']が引かれる
-    sp = parameter['cost_cooperate'] * members_as
-    
-    # np.array shape=[2, 成員数]: 非協調行動と非支援行動へ1をそれ以外の行動は0を持つベクトル
-    members_d_ns = np.ones((2, members_ac.shape[0])) - np.array([members_ac, members_as])
-    # np.array shape=[2, 制裁者数(0人のコミュニティを含めない)]: 制裁者の制裁の大きさを表すベクトル
-    punishment = np.array([
-            leaders_apc[np.isin(leaders_cid, unique_comunity_id)],
-            leaders_aps[np.isin(leaders_cid, unique_comunity_id)]
-        ]) * parameter['punish_size']
-
-    # 非協調の非支援の場合に制裁者が制裁を行使したら罰される
-    pp = (comunity_mask * np.dot(members_d_ns.T, punishment)).sum(axis=1)
-    
-    r = r_income + d - cp - sp - pp
-    
-    # コミュニティに1人しかいない場合は公共財ゲームが成り立たない
-    r[np.dot(comunity_mask, comunity_size) == 1] = r_income
-
     return r
 
-def get_leaders_gain(members_ac, members_as, members_cid, leaders_cid, leaders_apc, leaders_aps, parameter):
+
+
+def get_leaders_gain(members_ac, members_as, members_cid, leaders_id, leaders_apc, leaders_aps, parameter):
     '''
     abstract:
         各成員と制裁者の行動から制裁者の利得を算出
@@ -152,7 +127,7 @@ def get_leaders_gain(members_ac, members_as, members_cid, leaders_cid, leaders_a
             成員の協調の選択の有無
         members_as:    np.array shape=[NUM_MEMBERS]
             成員の支援の選択の有無
-        leaders_cid:
+        leaders_id:
             制裁者のPLAYERID
         leader_apc:    int
             制裁者の非協調者制裁の選択の有無
@@ -165,37 +140,20 @@ def get_leaders_gain(members_ac, members_as, members_cid, leaders_cid, leaders_a
             制裁者の利得
     '''
 
+    r = np.zeros(leaders_apc.shape[0])
 
-    # np.array shape=[制裁者数(0人のコミュニティを含めない)]: コミュニティID(制裁者のプレイヤーID)
-    unique_comunity_id = np.unique(members_cid)
-
-    # np.array shpae=[成員数]: ユニークなコミュニティID集合をソートした時のインデックス番号
-    members_cindex = np.vectorize(lambda x: np.where(unique_comunity_id == x)[0][0])(members_cid)
-
-    # np.array shape=[成員数, 制裁者数(0人のコミュニティを含めない)]: 成員がどのコミュニティに属しているかのone_hotベクトル
-    comunity_mask = np.eye(len(unique_comunity_id))[members_cindex]
-
-    # 税金の徴収
-    tax = np.dot(members_as, comunity_mask) * parameter['cost_support']
-
-    # np.array shape=[2, 成員数]: 非協調行動と非支援行動へ1をそれ以外の行動は0を持つベクトル
-    members_d_ns = np.ones((2, members_ac.shape[0])) - np.array([members_ac, members_as])
-    # np.array shape=[2, 制裁者数(0人のコミュニティを含めない)]: 各コミュニティの非協調者, 非支援者人数
-    comunity_d_ns_size = np.dot(members_d_ns, comunity_mask)
-    
-    # 制裁費用の算出
-    p_cost = np.diag(
-        np.dot(
-            np.array([
-                leaders_apc[np.isin(leaders_cid, unique_comunity_id)],
-                leaders_aps[np.isin(leaders_cid, unique_comunity_id)]
-            ]).T,
-            comunity_d_ns_size
-        )
-    )
-
-    r = np.zeros(leaders_cid.shape[0])
-    r[np.isin(leaders_cid, unique_comunity_id)] = tax - p_cost
+    for cid, leader_apc, leader_aps in zip(leaders_id, leaders_apc, leaders_aps):
+        num_members = np.sum(members_cid == cid)
+        if num_members != 0:
+            # 制裁者の得点計算
+            tax =  np.sum(members_as[members_cid == cid]) * parameter['cost_support']
+            # 非協力者制裁を行うコストを支払う
+            pcc =  parameter['cost_punish'] * leader_apc * (np.sum(np.ones(num_members) - members_ac[members_cid == cid]))
+            # 非支援者制裁を行うコストを支払う
+            psc =  parameter['cost_punish'] * leader_aps * (np.sum(np.ones(num_members) - members_as[members_cid == cid]))
+            r[leaders_id == cid] = tax - pcc - psc
+        else:
+            r[leaders_id == cid] = 0
 
     return r
 
@@ -297,7 +255,7 @@ def exec_pgg(players, parameter):
         if i % COMUNITY_MOVE_TERM == 0:
             unique_comunity_id, comunity_size = np.unique(members[:, COL_COMUNITY].astype(np.int64), return_counts=True)
             comu_n_histry[int(i/COMUNITY_MOVE_TERM), :] = np.zeros(leaders.shape[0])
-            comu_r_histry[int(i/COMUNITY_MOVE_TERM), np.isin(leaders[:, COL_PLAYERID], unique_comunity_id)] = comunity_size
+            comu_n_histry[int(i/COMUNITY_MOVE_TERM), np.isin(leaders[:, COL_PLAYERID], unique_comunity_id)] = comunity_size
             comu_r_histry[int(i/COMUNITY_MOVE_TERM), :] = leaders[:, COL_COMUNITY_REWARD] / COMUNITY_MOVE_TERM
             members[:, COL_COMUNITY] = get_newcomunity(leaders[:, COL_COMUNITY_REWARD], leaders[:, COL_PLAYERID], members.shape[0], mu=parameter['epsilon'])
             leaders[:, COL_COMUNITY_REWARD] = 0

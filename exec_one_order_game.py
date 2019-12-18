@@ -40,7 +40,7 @@ def wrapper(arg):
     process(*arg)
 
 def main():
-    arg = [(i, range(30)) for i in range(S, MAX_REP)]
+    arg = [(i, [0, 1, 2]) for i in range(S, MAX_REP)]
     with Pool(MULTI) as p:
         p.map_async(wrapper, arg).get(9999999)
 

@@ -240,23 +240,23 @@ def exec_pgg(players, parameter):
     members = players[players[:, COL_ROLE] == ROLE_MEMBER, :]
     leaders = players[players[:, COL_ROLE] == ROLE_LEADER, :]
 
-    qa_histry = np.zeros((MAX_STEP, 4))
-    qap_histry = np.zeros((MAX_STEP, 4))
-    comu_n_histry = np.zeros((int(MAX_STEP/COMUNITY_MOVE_TERM), leaders.shape[0]))
-    comu_r_histry = np.zeros((int(MAX_STEP/COMUNITY_MOVE_TERM), leaders.shape[0]))
+    # qa_histry = np.zeros((MAX_STEP, 4))
+    # qap_histry = np.zeros((MAX_STEP, 4))
+    # comu_n_histry = np.zeros((int(MAX_STEP/COMUNITY_MOVE_TERM), leaders.shape[0]))
+    # comu_r_histry = np.zeros((int(MAX_STEP/COMUNITY_MOVE_TERM), leaders.shape[0]))
 
     if np.sum(np.isnan(leaders[:, COL_COMUNITY_REWARD])) > 0:
         # 情報なしコミュニティの評価値
         leaders[np.isnan(leaders[:, COL_COMUNITY_REWARD]), COL_COMUNITY_REWARD] = leaders[~np.isnan(leaders[:, COL_COMUNITY_REWARD]), COL_COMUNITY_REWARD].mean()
 
     # ゲーム実行
-    for i in tqdm(range(MAX_STEP)):
+    for i in range(MAX_STEP):
         # コミュニティの模倣(移動)
         if i % COMUNITY_MOVE_TERM == 0:
-            unique_comunity_id, comunity_size = np.unique(members[:, COL_COMUNITY].astype(np.int64), return_counts=True)
-            comu_n_histry[int(i/COMUNITY_MOVE_TERM), :] = np.zeros(leaders.shape[0])
-            comu_n_histry[int(i/COMUNITY_MOVE_TERM), np.isin(leaders[:, COL_PLAYERID], unique_comunity_id)] = comunity_size
-            comu_r_histry[int(i/COMUNITY_MOVE_TERM), :] = leaders[:, COL_COMUNITY_REWARD] / COMUNITY_MOVE_TERM
+            # unique_comunity_id, comunity_size = np.unique(members[:, COL_COMUNITY].astype(np.int64), return_counts=True)
+            # comu_n_histry[int(i/COMUNITY_MOVE_TERM), :] = np.zeros(leaders.shape[0])
+            # comu_n_histry[int(i/COMUNITY_MOVE_TERM), np.isin(leaders[:, COL_PLAYERID], unique_comunity_id)] = comunity_size
+            # comu_r_histry[int(i/COMUNITY_MOVE_TERM), :] = leaders[:, COL_COMUNITY_REWARD] / COMUNITY_MOVE_TERM
             members[:, COL_COMUNITY] = get_newcomunity(leaders[:, COL_COMUNITY_REWARD], leaders[:, COL_PLAYERID], members.shape[0], mu=parameter['epsilon'])
             leaders[:, COL_COMUNITY_REWARD] = 0
 
@@ -299,9 +299,9 @@ def exec_pgg(players, parameter):
             else:
                 leaders[leaders[:, COL_PLAYERID] == cid, COL_COMUNITY_REWARD] += 0.1
 
-        # データ記録
-        qa_histry[i, :] = members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]].mean(axis=0)
-        qap_histry[i, :] = leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]].mean(axis=0)
+        # # データ記録
+        # qa_histry[i, :] = members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]].mean(axis=0)
+        # qap_histry[i, :] = leaders[:, [COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]].mean(axis=0)
         # 学習
         members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_action(
             members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
@@ -324,8 +324,8 @@ def exec_pgg(players, parameter):
     players[players[:, COL_ROLE] == ROLE_MEMBER, :] = members
     players[players[:, COL_ROLE] == ROLE_LEADER, :] = leaders
 
-    return players, qa_histry, qap_histry, comu_n_histry, comu_r_histry
-    # return players
+    # return players, qa_histry, qap_histry, comu_n_histry, comu_r_histry
+    return players
 
 def get_players_role(players_qr, epsilon=0.02):
     '''

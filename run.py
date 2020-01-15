@@ -31,7 +31,7 @@ def process(seed, parameter, path):
     action_rate_l = []
 
     players = generate_players()
-    for _ in tqdm(range(300)):
+    for _ in tqdm(range(500)):
         agreed_rule_number = -1
         while agreed_rule_number == -1:
             players[:, COL_RNUM] = get_players_rule(players)

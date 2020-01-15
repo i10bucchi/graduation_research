@@ -28,6 +28,7 @@ def process(seed, parameter, path):
     q_l_l = []
     m_r_l = []
     l_r_l = []
+    action_rate_l = []
 
     players = generate_players()
     for _ in tqdm(range(300)):
@@ -37,7 +38,7 @@ def process(seed, parameter, path):
             agreed_rule_number = get_gaming_rule(players)
         theta = rule_dict[agreed_rule_number]
 
-        players, _, _ = one_order_game(players, parameter, theta)
+        players, action_rate = one_order_game(players, parameter, theta)
 
         players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]] = learning_rule(
             players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]],
@@ -51,11 +52,13 @@ def process(seed, parameter, path):
         q_l_l.append(players_qr[players[:, COL_ROLE] == ROLE_LEADER, :][0])
         m_r_l.append([players[players[:, COL_ROLE] == ROLE_MEMBER, COL_RREWARD].mean(), agreed_rule_number])
         l_r_l.append([players[players[:, COL_ROLE] == ROLE_LEADER, COL_RREWARD][0], agreed_rule_number])
+        action_rate_l.append(action_rate)
     
     pd.DataFrame(q_m_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrm_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(q_l_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrl_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(m_r_l, columns=['reward', 'rule_number']).to_csv(path + 'csv/member_reward_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(l_r_l, columns=['reward', 'rule_number']).to_csv(path + 'csv/leader_reward_seed={seed}.csv'.format(seed=seed))
+    pd.DataFrame(action_rate_l, columns=['cooperation_rate', 'supporting_rate']).to_csv(path + 'csv/players_action_rate_seed={seed}.csv'.format(seed=seed))
 
 # 引数を複数取るために必要
 # https://qiita.com/kojpk/items/2919362de582a7d8de9e

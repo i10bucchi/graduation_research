@@ -79,7 +79,7 @@ def get_members_action(members_qa, parameter):
     members_action = np.argmax(members_qa, axis=1)
     rand = np.random.rand(members_qa.shape[0])
     members_action[rand < parameter['epsilon']] = np.random.randint(0, 8, members_action[rand < parameter['epsilon']].shape[0])
-    
+        
     return np.tile(a_l, (members_action.shape[0], 1))[members_action], members_action
 
 def get_leader_action(leader_qa, parameter):
@@ -259,10 +259,8 @@ def one_order_game(players, parameter, theta):
     output:
         players:    np.array shape=(NUM_PLAYERS, NUM_COLUMN)
             ゲームプレイヤー
-        mqa_hist:           np.array shape=(MAX_STEP, NUM_PLAYERS, 8)
-            成員の行動評価値の遷移記録
-        lqa_hist:           np.array shape=(MAX_STEP, 4)
-            制裁者の行動評価値の遷移記録
+        :           tuple
+            (平均協調率, 平均支援率)
     '''
 
     # 役割決定
@@ -274,8 +272,8 @@ def one_order_game(players, parameter, theta):
     # 収集対象データ初期化
     mr_sum = np.zeros(NUM_MEMBERS)
     lr_sum = 0
-    mqa_hist = np.zeros((MAX_STEP, NUM_MEMBERS, 8))
-    lqa_hist = np.zeros((MAX_STEP, 4))
+    c_num = np.zeros(NUM_MEMBERS)
+    s_num = np.zeros(NUM_MEMBERS)
 
     # ゲーム実行
     step = 0
@@ -306,8 +304,8 @@ def one_order_game(players, parameter, theta):
         # 収集対象のデータを記録
         mr_sum += mrs.astype(np.float)
         lr_sum += lr
-        mqa_hist[i, :, :] = members[:, COL_Qa000:COL_Qa111+1]
-        lqa_hist[i, :] = leader[COL_Qap00:COL_Qap11+1]
+        c_num += members[:, COL_AC].astype(np.float)
+        s_num += members[:, COL_AS].astype(np.float)
 
         # 学習
         members[members[:, COL_F_TIMER] == 0, COL_Qa000:COL_Qa111+1] = learning_members(
@@ -350,7 +348,7 @@ def one_order_game(players, parameter, theta):
     players[players[:, COL_ROLE] == ROLE_MEMBER, :] = members
     players[players[:, COL_ROLE] == ROLE_LEADER, :] = leader
 
-    return players, mqa_hist, lqa_hist
+    return players, ( c_num.sum() / NUM_MEMBERS / MAX_STEP, s_num.sum() / NUM_MEMBERS / MAX_STEP )
 
 def get_players_rule(players, epshilon=0.9):
     '''

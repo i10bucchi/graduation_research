@@ -9,6 +9,21 @@ from config import *
 
 warnings.filterwarnings('error')
 
+# 行動の対応表
+a_l = np.array([
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1]
+])
+
+a_l_str = np.array([
+    '00',
+    '01',
+    '10',
+    '11'
+])
+
 def generate_players():
     '''
     abstract:
@@ -23,18 +38,13 @@ def generate_players():
     players = np.zeros((NUM_PLAYERS, NUM_COLUMN))
     players[:, COL_AC] = -1
     players[:, COL_AS] = -1
-    players[:, COL_AF] = 0
     players[:, COL_APC] = -1
     players[:, COL_APS] = -1
     players[:, COL_ANUM] = -1
-    players[:, COL_Qa000] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qa001] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qa010] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qa011] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qa100] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qa101] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qa110] = np.random.rand(NUM_PLAYERS)
-    players[:, COL_Qa111] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_Qa00] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_Qa01] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_Qa10] = np.random.rand(NUM_PLAYERS)
+    players[:, COL_Qa11] = np.random.rand(NUM_PLAYERS)
     players[:, COL_RNUM] = -1
     players[:, COL_Qr00] = np.random.rand(NUM_PLAYERS)
     players[:, COL_Qr01] = np.random.rand(NUM_PLAYERS)
@@ -53,32 +63,20 @@ def get_members_action(members_qa, parameter):
     abstract:
         epshilon-greedy法により成員の行動を決定する
     input:
-        members_qa:    np.array shape=[NUM_MEMBERS, 8]
+        members_qa:    np.array shape=[NUM_MEMBERS, 4]
             全ての成員のQテーブル
         parameter:      dict
             モデルのパラーメター辞書
     output:
-        :               np.array shape=[NUM_MEMBERS, 3]
+        :               np.array shape=[NUM_MEMBERS, 2]
             全ての成員の行動選択
         members_action: np.array shape=[NUM_MEMBERS]
             全ての成員の行動番号
     '''
 
-    # 行動の対応表
-    a_l = np.array([
-        [0, 0, 0],
-        [0, 0, 1],
-        [0, 1, 0],
-        [0, 1, 1],
-        [1, 0, 0],
-        [1, 0, 1],
-        [1, 1, 0],
-        [1, 1, 1]
-    ])
-
     members_action = np.argmax(members_qa, axis=1)
     rand = np.random.rand(members_qa.shape[0])
-    members_action[rand < parameter['epsilon']] = np.random.randint(0, 8, members_action[rand < parameter['epsilon']].shape[0])
+    members_action[rand < parameter['epsilon']] = np.random.randint(0, 4, members_action[rand < parameter['epsilon']].shape[0])
         
     return np.tile(a_l, (members_action.shape[0], 1))[members_action], members_action
 
@@ -97,13 +95,6 @@ def get_leader_action(leader_qa, parameter):
         leader_action:  int
             制裁者の行動番号
     '''
-    # 行動の対応表
-    a_l = np.array([
-        [0, 0],
-        [0, 1],
-        [1, 0],
-        [1, 1]
-    ])
     rand = np.random.rand()
     
     if rand < parameter['epsilon']:
@@ -184,24 +175,24 @@ def learning_members(members_qa, rewards, members_anum, parameter):
     abstract:
         成員の学習を行う
     input:
-        members_qa:     np.array shape=[NUM_MEMBERS, 8]
+        members_qa:     np.array shape=[NUM_MEMBERS, 4]
             全ての成員のQテーブル
         rewards:        np.array shape=[NUM_MEMBERS]
             全ての成員の利得
         members_anum:   np.array shape=[NUM_MEMBERS]
             全ての成員の行動番号
     output:
-        :   np.array shape=[NUM_MEMBERS, 8]
+        :   np.array shape=[NUM_MEMBERS, 4]
             全ての成員の更新後のQテーブル
     '''
 
     # 今回更新するQ値以外のerrorを0にするためのマスク
-    mask = np.zeros((members_qa.shape[0], 8))
+    mask = np.zeros((NUM_MEMBERS, 4))
     for i, an in enumerate(members_anum):
         mask[i, int(an)] = 1
 
     # 誤差
-    error = mask * (np.tile(rewards,(8,1)).T - members_qa)
+    error = mask * (np.tile(rewards,(4,1)).T - members_qa)
 
     return members_qa + ( parameter['alpha'] * error )
 
@@ -277,26 +268,19 @@ def one_order_game(players, parameter, theta):
 
     # ゲーム実行
     step = 0
-    for i in tqdm(range(MAX_STEP)):
+    for i in range(MAX_STEP):
         # 行動決定
         if theta[1] == 0:
-            leader[[COL_APC, COL_APS]], leader[COL_ANUM] = get_leader_action(leader[COL_Qap00:COL_Qap11+1], parameter)
+            leader[[COL_APC, COL_APS]], leader[COL_ANUM] = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
         else:
             if i % LEADER_SAMPLING_TERM == 0:
-                leader[[COL_APC, COL_APS]], leader[COL_ANUM] = get_leader_action(leader[COL_Qap00:COL_Qap11+1], parameter)
-        if np.sum(members[:, COL_F_TIMER] == 0):
-            tmp = get_members_action(members[members[:, COL_F_TIMER] == 0, COL_Qa000:COL_Qa111+1], parameter)
-            members[members[:, COL_F_TIMER] == 0, COL_AC:COL_AF+1] = tmp[0]
-            members[members[:, COL_F_TIMER] == 0, COL_ANUM] = tmp[1]
-            members[(members[:, COL_F_TIMER] == 0) & (members[:, COL_AF] == 0), COL_F_TIMER] = 1
-            members[(members[:, COL_F_TIMER] == 0) & (members[:, COL_AF] == 1), COL_F_TIMER] = LEADER_SAMPLING_TERM
-        members[:, COL_F_TIMER] -= 1
+                leader[[COL_APC, COL_APS]], leader[COL_ANUM]  = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
+        members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_members_action(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
         
         # 利得算出
         mrs = get_members_gain(members[:, COL_AC], members[:, COL_AS], leader[COL_APC], leader[COL_APS], parameter)
         lr = get_leaders_gain(members[:, COL_AC], members[:, COL_AS], leader[COL_APC], leader[COL_APS], parameter)
-        members[members[:, COL_AF] == 0, COL_P] += mrs[members[:, COL_AF] == 0]
-        members[members[:, COL_AF] == 1, COL_P] += mrs[members[:, COL_AF] == 1]/LEADER_SAMPLING_TERM
+        members[:, COL_P] += mrs
         leader[COL_P] += lr
         
         step += 1
@@ -308,19 +292,18 @@ def one_order_game(players, parameter, theta):
         s_num += members[:, COL_AS].astype(np.float)
 
         # 学習
-        members[members[:, COL_F_TIMER] == 0, COL_Qa000:COL_Qa111+1] = learning_members(
-            members[members[:, COL_F_TIMER] == 0, COL_Qa000:COL_Qa111+1],
-            members[members[:, COL_F_TIMER] == 0, COL_P],
-            members[members[:, COL_F_TIMER] == 0, COL_ANUM],
+        members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_members(
+            members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
+            members[:, COL_P],
+            members[:, COL_ANUM],
             parameter
         )
-        members[:, COL_P_LOG] += mrs
-        members[members[:, COL_F_TIMER] == 0, COL_P] = 0
+        members[:, COL_P_LOG] += members[:, COL_P]
+        members[:, COL_P] = 0
 
         if theta[1] == 0:
-            leader[COL_Qap00:COL_Qap11+1] = learning_leader(
-                members[:, COL_P_LOG],
-                leader[COL_Qap00:COL_Qap11+1],
+            leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_leader(
+                members[:, COL_P_LOG], leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
                 leader[COL_ANUM],
                 leader[COL_P],
                 parameter,
@@ -330,9 +313,8 @@ def one_order_game(players, parameter, theta):
             members[:, COL_P_LOG] = 0
         else:
             if i % LEADER_SAMPLING_TERM == LEADER_SAMPLING_TERM - 1:
-                leader[COL_Qap00:COL_Qap11+1] = learning_leader(
-                    members[:, COL_P_LOG],
-                    leader[COL_Qap00:COL_Qap11+1],
+                leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]] = learning_leader(
+                    members[:, COL_P_LOG], leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]],
                     leader[COL_ANUM],
                     leader[COL_P],
                     parameter,
@@ -399,7 +381,7 @@ def get_rule_gain(players):
         :    np.array shape=[NUM_PLAYERS]
             多数決で決まったルールの番号(最大表が2つ以上あった場合は-1を返す)
     '''
-    return np.max(players[:, COL_Qa000:COL_Qa111+1], axis=1)
+    return np.max(players[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], axis=1)
 
 def learning_rule(players_qr, rewards, rule_number, alpha=0.8):
     '''

@@ -6,48 +6,41 @@ import yaml
 # モデル
 NUM_PLAYERS = 21
 NUM_MEMBERS = NUM_PLAYERS-1
-MAX_REP = 2
+MAX_REP = 21
 S = 1
-MAX_STEP = 100000
+MAX_STEP = 20000
 LEADER_SAMPLING_TERM = 100
 
 # カラム
-NUM_COLUMN = 33
+NUM_COLUMN = 22
 
 ## 共有
 COL_P = 0
-COL_ANUM = 7
-COL_Qa000 = 8 # Q(c, s, f)
-COL_Qa001 = 9
-COL_Qa010 = 10
-COL_Qa011 = 11
-COL_Qa100 = 12 # Q(c, s, f)
-COL_Qa101 = 13
-COL_Qa110 = 14
-COL_Qa111 = 15 
-COL_RNUM = 16
-COL_Qr00 = 17
-COL_Qr01 = 18
-COL_Qr10 = 19
-COL_Qr11 = 24
-COL_ROLE = 25
-COL_RREWARD = 26
-COL_Qap00 = 27 # Q(pc, ps)
-COL_Qap01 = 28
-COL_Qap10 = 29
-COL_Qap11 = 30
+COL_ANUM = 6
+COL_Qa00 = 7 # 成員ならQ(c, s), 制裁者ならQ(pc, ps)
+COL_Qa01 = 8
+COL_Qa10 = 9
+COL_Qa11 = 10
+COL_RNUM = 11
+COL_Qr00 = 12
+COL_Qr01 = 13
+COL_Qr10 = 14
+COL_Qr11 = 15
+COL_ROLE = 16
+COL_RREWARD = 17
+COL_Qap00 = 18 # 成員ならQ(c, s), 制裁者ならQ(pc, ps)
+COL_Qap01 = 19
+COL_Qap10 = 20
+COL_Qap11 = 21
 
 ## 成員用
 COL_P_LOG = 1
 COL_AC = 2
 COL_AS = 3
-COL_AF = 4
-COL_P_F = 31
-COL_F_TIMER = 32
 
 ## 制裁者用
-COL_APC = 5
-COL_APS = 6
+COL_APC = 4
+COL_APS = 5
 
 # パラメータ
 COST_C_LIST = [4]

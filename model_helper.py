@@ -80,7 +80,7 @@ def get_members_action(members_qa, parameter):
         
     return np.tile(a_l, (members_action.shape[0], 1))[members_action], members_action
 
-def get_leader_action(leader_qa, parameter):
+def get_leader_action(leader_qa, parameter, theta, step):
     '''
     abstract:
         epshilon-greedy法により制裁者の行動を決定する
@@ -96,8 +96,13 @@ def get_leader_action(leader_qa, parameter):
             制裁者の行動番号
     '''
     rand = np.random.rand()
+
+    if theta[1] == 0:
+        epsilon = 3 / (step+1) + parameter['epsilon']
+    else:
+        epsilon = 3 / ((step+1) / LEADER_SAMPLING_TERM) + parameter['epsilon']
     
-    if rand < parameter['epsilon']:
+    if rand < epsilon:
         leader_action = np.random.randint(0, 4)
     else:
         leader_action = np.argmax(leader_qa)

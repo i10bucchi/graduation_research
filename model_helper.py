@@ -261,6 +261,8 @@ def one_order_game(players, parameter, theta):
     leader = players[players[:, COL_ROLE] == ROLE_LEADER, :][0]
 
     # 収集対象データ初期化
+    qma_hist = np.zeros((MAX_STEP, NUM_MEMBERS, 4))
+    qla_hist = np.zeros((MAX_STEP, 4))
     mr_sum = np.zeros(NUM_MEMBERS)
     lr_sum = 0
     c_num = np.zeros(NUM_MEMBERS)
@@ -271,10 +273,10 @@ def one_order_game(players, parameter, theta):
     for i in range(MAX_STEP):
         # 行動決定
         if theta[1] == 0:
-            leader[[COL_APC, COL_APS]], leader[COL_ANUM] = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
+            leader[[COL_APC, COL_APS]], leader[COL_ANUM] = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter, theta, i)
         else:
             if i % LEADER_SAMPLING_TERM == 0:
-                leader[[COL_APC, COL_APS]], leader[COL_ANUM]  = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter)
+                leader[[COL_APC, COL_APS]], leader[COL_ANUM]  = get_leader_action(leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]], parameter, theta, i)
         members[:, [COL_AC, COL_AS]], members[:, COL_ANUM] = get_members_action(members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]], parameter)
         
         # 利得算出
@@ -292,6 +294,8 @@ def one_order_game(players, parameter, theta):
         s_num += members[:, COL_AS].astype(np.float)
 
         # 学習
+        qma_hist[i, :, :] = members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]]
+        qla_hist[i, :] = leader[[COL_Qap00, COL_Qap01, COL_Qap10, COL_Qap11]]
         members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]] = learning_members(
             members[:, [COL_Qa00, COL_Qa01, COL_Qa10, COL_Qa11]],
             members[:, COL_P],
@@ -330,7 +334,7 @@ def one_order_game(players, parameter, theta):
     players[players[:, COL_ROLE] == ROLE_MEMBER, :] = members
     players[players[:, COL_ROLE] == ROLE_LEADER, :] = leader
 
-    return players, ( c_num.sum() / NUM_MEMBERS / MAX_STEP, s_num.sum() / NUM_MEMBERS / MAX_STEP )
+    return players, ( c_num.sum() / NUM_MEMBERS / MAX_STEP, s_num.sum() / NUM_MEMBERS / MAX_STEP ), qma_hist, qla_hist
 
 def get_players_rule(players, epshilon=0.9):
     '''

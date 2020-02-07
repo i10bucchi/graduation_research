@@ -375,9 +375,9 @@ def get_gaming_rule(players):
     max_rule = np.argmax(rule_hyonum)
 
     if np.sum(rule_hyonum[max_rule] == rule_hyonum) == 1:
-        return max_rule
+        return max_rule, rule_hyonum
     else:
-        return -1
+        return -1, 0
 
 def get_rule_gain(players):
     '''

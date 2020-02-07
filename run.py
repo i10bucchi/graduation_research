@@ -27,7 +27,8 @@ def process(seed, parameter, path):
 
     # qma_hist_list = []
     # qla_hist_list = []
-    qr_hist_list = []
+    # qr_hist_list = []
+    hyo_hist = []
     q_m_l = []
     q_m_std_l = []
     q_m_median_l = []
@@ -40,10 +41,10 @@ def process(seed, parameter, path):
         agreed_rule_number = -1
         while agreed_rule_number == -1:
             players[:, COL_RNUM] = get_players_rule(players, epshilon=A+(B/(turn+1)))
-            agreed_rule_number = get_gaming_rule(players)
+            agreed_rule_number, hyo = get_gaming_rule(players)
         theta = rule_dict[agreed_rule_number]
 
-        players, action_rate, qma_hist, qla_hist = one_order_game(players, parameter, theta)
+        players, action_rate, _, _ = one_order_game(players, parameter, theta)
 
         players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]] = learning_rule(
             players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]],
@@ -55,7 +56,8 @@ def process(seed, parameter, path):
         # qma_hist_list.append(qma_hist)
         # qla_hist_list.append(qla_hist)
         players_qr = players[:, [COL_Qr00, COL_Qr01, COL_Qr10, COL_Qr11]]
-        qr_hist_list.append(players_qr)
+        # qr_hist_list.append(players_qr)
+        hyo_hist.append(hyo)
         q_m_l.append(np.mean(players_qr[players[:, COL_ROLE] == ROLE_MEMBER, :], axis=0))
         q_m_std_l.append(np.std(players_qr[players[:, COL_ROLE] == ROLE_MEMBER, :], axis=0))
         q_m_median_l.append(np.median(players_qr[players[:, COL_ROLE] == ROLE_MEMBER, :], axis=0))
@@ -69,9 +71,10 @@ def process(seed, parameter, path):
     # with open(path + f'qla_hist_seed={seed}.pickle', 'wb') as f:
     #     pickle.dump(qla_hist_list, f)
 
-    with open(path + f'qr_hist_seed={seed}.pickle', 'wb') as f:
-        pickle.dump(qr_hist_list, f)
+    # with open(path + f'qr_hist_seed={seed}.pickle', 'wb') as f:
+    #     pickle.dump(qr_hist_list, f)
 
+    pd.DataFrame(hyo_hist, columns=['00', '01', '10', '11']).to_csv(path + 'csv/hyonum_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(q_m_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrm_mean_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(q_m_std_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrm_std_seed={seed}.csv'.format(seed=seed))
     pd.DataFrame(q_l_l, columns=['Qr_00', 'Qr_01', 'Qr_10', 'Qr_11']).to_csv(path + 'csv/players_qrl_seed={seed}.csv'.format(seed=seed))
@@ -97,7 +100,7 @@ def main():
         os.mkdir(rootpath + dirname + '/csv')
 
         path = rootpath + dirname + '/'
-        target_seed = [1, 3, 4, 2, 5, 6]
+        target_seed = range(1, 41)
         # target_seed = range(80)
         arg = [(i, parameter, path) for i in target_seed]
         with Pool(MULTI) as p:
